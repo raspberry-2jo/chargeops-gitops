@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: notifier-v2
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: notifier-v2

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: chatops-bot-v2
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: chatops-bot-v2
