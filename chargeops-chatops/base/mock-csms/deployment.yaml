@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: mock-csms
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: mock-csms
