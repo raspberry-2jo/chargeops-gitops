@@ -19,36 +19,36 @@ images:
   - name: chanjookim/chargeops-chatops-bot
     newTag: dev
     newName: docker.io/chanjookim/chargeops-chatops-bot
-    digest: sha256:08520bc1502c4eefbd9383f6f87d36a92f08ad28b5ba07a1e751b7b621e64d11
+    digest: sha256:2e6c13ef74ec1cdf41c87334dd53d27d1c0d7e083f6dbe62759fb2fc1e79e7be
   - name: chanjookim/chargeops-alert-router
     newTag: dev
     newName: docker.io/chanjookim/chargeops-alert-router
-    digest: sha256:5f39070ce544649ab85dea9264e62aa08ff077aaf857e4c449f42a4910014326
+    digest: sha256:5b724fe0bd36642d5ab28758f50a9e75fa89bc0f7af2afacbc8fa522093e0f43
   - name: chanjookim/chargeops-mock-csms
     newTag: dev
     newName: docker.io/chanjookim/chargeops-mock-csms
-    digest: sha256:03f78c36b2d70ed0de70c91d9eac0b9f9382c61f584e9f1566b832e3c7752136
+    digest: sha256:f88af65af96285eb50565c87103ea32e2a58cef97202a1294630088b1b45fc67
   - name: chanjookim/chargeops-ai-gateway
     newName: docker.io/chanjookim/chargeops-ai-gateway
     newTag: dev
-    digest: sha256:73e5d68dd36a1b9105c4164584fdc321eabc4bbc088f7f43dfcaff1f3f23eefc
+    digest: sha256:57111a6ef033c0596bd37f5e964e1d76a6aeb61e560bc6c8d053f22ac15ca749
   - name: chanjookim/chargeops-v2-chatops-bot
     newName: docker.io/chanjookim/chargeops-v2-chatops-bot
     newTag: dev
-    digest: sha256:d9212634feb850164ab48144ecd13954a1a7243839b8bd5c464344e339b65ec4
+    digest: sha256:569f004e4e809d605e4c6f4e239fe19b1fa8db8706d17919aac461acae6ca16e
   - name: chanjookim/chargeops-v2-csms
     newName: docker.io/chanjookim/chargeops-v2-csms
     newTag: dev
-    digest: sha256:9ee58b1e88cc5d71656ad08c0614874c5e3ce08256807ec1c8579af097f5f6fb
+    digest: sha256:8f2c896fa6a93d0200c9cfc6be44f38033606ff446b3d36fa2e3df7546cd4973
   - name: chanjookim/chargeops-v2-notifier
     newName: docker.io/chanjookim/chargeops-v2-notifier
     newTag: dev
-    digest: sha256:963af29b38586c8efac183af828be49403330766a2893e721065b7230f16e7bc
+    digest: sha256:2f87350cec75032c381b53e5efe5841b8d0213b832c26a5a84c6aced55b5cfd2
   - name: chanjookim/chargeops-v2-vcharger
     newName: docker.io/chanjookim/chargeops-v2-vcharger
     newTag: dev
-    digest: sha256:ff9eb02c8c45a1c49248a6f70b22018a7505f75edfc646f0647c3d1fe9b32c0c
+    digest: sha256:4318887fc550afd9b8f9c2d6e5e32f825a099b76810dcab1f07632c9501124b1
   - name: chanjookim/chargeops-v2-collector
     newName: docker.io/chanjookim/chargeops-v2-collector
     newTag: dev
-    digest: sha256:696d14b487acc3d52fc772bf73cb9f970b7cdc7460385a06941afd22f480b2e6
+    digest: sha256:d71908af235d77a4cc63745dd01795255be02f45e31ba506d1e7e9ed51c1b65f
