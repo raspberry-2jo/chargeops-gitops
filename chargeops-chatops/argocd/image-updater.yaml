@@ -3,6 +3,8 @@ kind: ImageUpdater
 metadata:
   name: chargeops-image-updater
   namespace: argocd
+  annotations:
+    gitops-verification: "bootstrap-test-1"
 spec:
   writeBackConfig:
     method: git:secret:chargeops-git-write
