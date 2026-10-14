@@ -6,8 +6,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/chanjook1m/infra-test.git
-    targetRevision: feature/chargeops-gitops
+    repoURL: https://github.com/raspberry-2jo/chargeops-gitops.git
+    targetRevision: main
     path: chargeops-chatops/overlays/dev
   destination:
     server: https://kubernetes.default.svc

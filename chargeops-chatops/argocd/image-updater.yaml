@@ -7,8 +7,8 @@ spec:
   writeBackConfig:
     method: git:secret:chargeops-git-write
     gitConfig:
-      repository: https://github.com/chanjook1m/infra-test.git
-      branch: feature/chargeops-gitops
+      repository: https://github.com/raspberry-2jo/chargeops-gitops.git
+      branch: main
       writeBackTarget: kustomization
   applicationRefs:
     - namePattern: chargeops-chatops-dev
