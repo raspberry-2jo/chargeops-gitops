@@ -1,4 +1,4 @@
-# ChargeOps GitOps
+# ChargeOps GitOps 저장소 변경 내역과 CI/CD 연결 절차
 
 `chanjook1m/infra-test`의 `feature/chargeops-gitops` 브랜치 전체 파일과 커밋 이력을 이전한 저장소입니다.
 이전 기준 커밋: `e5cacdb8b45f54e77dcb83d26609f970f889d779`.
@@ -66,7 +66,7 @@ kubectl -n chargeops get deployments,pods,services,cronjobs,pvc
 
 배포 흐름: 앱 소스 변경 → Jenkins 테스트/이미지 Push → Image Updater가 이 저장소 main에 digest 커밋 → Argo CD Sync.
 롤백은 digest 변경 커밋을 revert하고, Image Updater가 다시 덮어쓰지 않도록 해당 이미지 업데이트를 조정합니다.
-이전 기록과 DB/Slack/PVC 등의 전제조건은 `docs/chargeops-v2-gitops.md`를 참고합니다.
+이전 기록과 DB/Slack/PVC 등의 전제조건은 [기존 GitOps 적용 기록](chargeops-v2-gitops.md)을 참고합니다.
 
 공식 참고: [Jenkins Pipeline](https://www.jenkins.io/doc/book/pipeline/syntax/),
 [Argo CD 자동 Sync](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/).

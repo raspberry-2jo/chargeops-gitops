@@ -1,6 +1,6 @@
 # ChargeOps v2 GitOps 적용 기록과 실행 절차
 
-> 이 문서는 원본 저장소의 적용 기록입니다. 저장소 이전 후 URL, 브랜치와 실행 경로는 루트 `README.md`를 따릅니다.
+> 이 문서는 원본 저장소의 적용 기록입니다. 저장소 이전 후 URL, 브랜치와 실행 경로는 [저장소 변경 내역과 CI/CD 연결 절차](repository-migration-and-cicd.md)를 따릅니다.
 > 현재 GitOps 저장소는 `raspberry-2jo/chargeops-gitops`, 브랜치는 `main`입니다.
 
 적용일: 2026-10-14. 로컬 `feature/chargeops-gitops` 기준 커밋: `a25679f`.
