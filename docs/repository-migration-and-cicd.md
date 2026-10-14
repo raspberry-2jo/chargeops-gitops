@@ -30,12 +30,27 @@ Kubernetes namespace, Application 이름, Service 이름, Secret 참조 이름�
 
 GitOps 검증 Job `chargeops-gitops-ci`:
 
-1. Linux agent label `chargeops-agent`에 Git 및 kubectl을 설치합니다.
+1. Linux agent label `chargeops-agent`에 Git을 설치합니다. kubectl이 없으면 Jenkins가 공식 바이너리를
+   `.ci-bin/`에 다운로드하고 SHA-256을 검증한 뒤 사용합니다. 이 경우 curl, sha256sum 및
+   `https://dl.k8s.io`와 리다이렉트 대상 다운로드 서버로의 HTTPS 연결이 필요하며 sudo는 필요하지 않습니다.
+   Linux amd64/arm64를 지원합니다. 기존 kubectl이 있으면 해당 설치를 사용합니다.
 2. Jenkins에 Pipeline, Git, Credentials Binding 플러그인을 준비합니다.
 3. Pipeline script from SCM: Git URL `https://github.com/raspberry-2jo/chargeops-gitops.git`, Branch `*/main`, Script Path `Jenkinsfile`.
 4. Build Now로 Kustomize 렌더링을 검증합니다. 결과 YAML은 빌드 artifact로 저장합니다.
 5. 실제 클러스터 검증에는 Secret file 형식 kubeconfig credential을 등록하고 `KUBECONFIG_CREDENTIAL_ID`에 그 ID를 입력합니다.
    `chargeops` namespace, Argo CD 및 ImageUpdater CRD가 먼저 있어야 하며 해당 리소스 dry-run 권한이 필요합니다.
+   다운로드 버전은 `KUBECTL_VERSION`으로 지정하며 기본값은 `v1.36.1`입니다.
+   서버 dry-run을 사용할 때는 클러스터 minor 버전에 맞추세요. 기존 설치가 있으면 이 파라미터로 교체하지 않습니다.
+
+### `kubectl: command not found` 실패 후 재실행
+
+최신 Jenkinsfile에는 `Prepare kubectl` 단계가 있습니다. Jenkins에서 Build Now 또는 Build with Parameters로
+다시 실행하고, 로그에서 kubectl 준비 → Render manifests 성공을 확인합니다.
+`KUBECONFIG_CREDENTIAL_ID`가 비어 있으면 서버 dry-run은 생략하며 렌더링에는 kubeconfig가 필요하지 않습니다.
+다운로드가 실패하면 agent의 curl/sha256sum 설치와 외부 HTTPS 연결을 확인하거나,
+agent 실행 사용자 PATH에 kubectl을 미리 설치합니다. Jenkins controller에만 설치하면 agent에서는 사용할 수 없습니다.
+
+공식 설치 및 체크섬 검증: [kubectl Linux 설치](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/).
 
 GitOps CI는 렌더링과 선택적 서버 dry-run을 수행합니다. 자동 Sync는 Jenkins 결과를 기다리지 않으므로,
 검증을 배포 전 필수 조건으로 만들려면 PR 브랜치에서 CI를 실행하고 main branch protection에 성공 체크를 설정합니다.

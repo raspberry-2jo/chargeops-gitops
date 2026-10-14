@@ -8,12 +8,24 @@ pipeline {
   }
   triggers { pollSCM('H/5 * * * *') }
   parameters {
+    string(name: 'KUBECTL_VERSION', defaultValue: 'v1.36.1',
+      description: 'Version downloaded when kubectl is missing. For server dry-run, match the cluster minor version.')
     string(name: 'KUBECONFIG_CREDENTIAL_ID', defaultValue: '',
       description: 'Optional Jenkins Secret file credential for server dry-run. Empty: render validation only.')
   }
   stages {
     stage('Checkout') {
       steps { checkout scm }
+    }
+    stage('Prepare kubectl') {
+      steps {
+        script {
+          env.PATH = env.WORKSPACE + '/.ci-bin:' + env.PATH
+        }
+        withEnv(['KUBECTL_VERSION=' + params.KUBECTL_VERSION.trim()]) {
+          sh 'sh scripts/ensure-kubectl.sh'
+        }
+      }
     }
     stage('Render manifests') {
       steps {
