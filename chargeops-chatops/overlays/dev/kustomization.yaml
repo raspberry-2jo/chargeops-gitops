@@ -47,8 +47,8 @@ images:
   - name: chanjookim/chargeops-v2-vcharger
     newName: docker.io/chanjookim/chargeops-v2-vcharger
     newTag: dev
-    digest: sha256:a14f02fa8e47ac5858c05cb988accec29daf09f723f7df47ce6d08baaa719418
+    digest: sha256:9ad8240ac8ae2a59fe805f760123decdd6d81dc171fcc9facfb6ea2f78a5ec86
   - name: chanjookim/chargeops-v2-collector
     newName: docker.io/chanjookim/chargeops-v2-collector
     newTag: dev
-    digest: sha256:0f346445dbbd0c0e3157088c497e02297e3724e3d54b3416ee1b6a1bc9500aef
+    digest: sha256:fda69693e6c95017fa00ecfad928f9e309cd2507a09be91f42ced6f00d2fb7e8
