@@ -2,6 +2,7 @@
 
 모든 앱 이미지의 접두사는 `registry.chargeops.lab:5000/chargeops/`입니다.
 Jenkins GitOps 검증 Job은 Linux agent label `mgmt-agent`를 사용합니다.
+앱 배포 namespace는 `ops`이며 Argo CD와 ImageUpdater 리소스는 `argocd`에 둡니다.
 
 ## 변경 내용
 
@@ -119,8 +120,8 @@ Pod image에는 `http://` 또는 `https://`를 붙이지 않습니다.
    # main 반영 및 registry 준비 후
    kubectl apply -f chargeops-chatops/argocd/image-updater.yaml
    kubectl -n argocd describe imageupdater chargeops-image-updater
-   kubectl -n chargeops get pods
-   kubectl -n chargeops get events --sort-by=.lastTimestamp
+   kubectl -n ops get pods
+   kubectl -n ops get events --sort-by=.lastTimestamp
    ```
 
 4. 새 registry digest가 main에 기록되고 Argo CD가 Synced/Healthy인지 확인합니다.

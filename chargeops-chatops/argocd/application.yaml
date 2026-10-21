@@ -11,7 +11,7 @@ spec:
     path: chargeops-chatops/overlays/dev
   destination:
     server: https://kubernetes.default.svc
-    namespace: chargeops
+    namespace: ops
   syncPolicy:
     automated:
       prune: false

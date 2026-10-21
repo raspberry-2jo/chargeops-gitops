@@ -41,12 +41,12 @@ CronJob timeZone은 Kubernetes 1.27 이상을 기준으로 합니다. [공식 Cr
 
 ```bash
 # kube-control1; 실제 값은 저장소 밖 ~/.chargeops-app-secrets.env에 입력
-kubectl create namespace chargeops --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace ops --dry-run=client -o yaml | kubectl apply -f -
 chmod 600 ~/.chargeops-app-secrets.env
-kubectl -n chargeops create secret generic chargeops-app-secrets \
+kubectl -n ops create secret generic chargeops-app-secrets \
   --from-env-file="$HOME/.chargeops-app-secrets.env" \
   --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n chargeops get secret chargeops-app-secrets
+kubectl -n ops get secret chargeops-app-secrets
 ```
 
 ## 렌더링, 서버 검증, Push
@@ -90,9 +90,9 @@ kubectl apply -f chargeops-chatops/argocd/application.yaml
 kubectl apply -f chargeops-chatops/argocd/image-updater.yaml
 kubectl -n argocd describe imageupdater chargeops-image-updater
 kubectl -n argocd get application chargeops-chatops-dev
-kubectl -n chargeops get deployment,pod,service,cronjob,pvc
-kubectl -n chargeops rollout status deployment/ai-gateway --timeout=180s
-kubectl -n chargeops port-forward service/ai-gateway 18000:8000
+kubectl -n ops get deployment,pod,service,cronjob,pvc
+kubectl -n ops rollout status deployment/ai-gateway --timeout=180s
+kubectl -n ops port-forward service/ai-gateway 18000:8000
 ```
 
 다른 터미널에서 `curl -fsS http://127.0.0.1:18000/cicd-healthz`로 최초 marker v1을 확인합니다.
@@ -103,8 +103,8 @@ Pod 교체 후 port-forward를 다시 열고 marker v2를 확인합니다.
 git fetch origin
 git log --oneline -5 origin/feature/chargeops-gitops
 kubectl -n argocd get application chargeops-chatops-dev
-kubectl -n chargeops get deployment ai-gateway -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
-kubectl -n chargeops rollout status deployment/ai-gateway --timeout=180s
+kubectl -n ops get deployment ai-gateway -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+kubectl -n ops rollout status deployment/ai-gateway --timeout=180s
 ```
 
 ## Collector 활성화
@@ -114,7 +114,7 @@ DB/API/PVC 준비를 확인한 후 `base/collector-v2/cronjobs.yaml`의 status/i
 수동 check도 공공 API를 호출하므로 준비 후 실행합니다.
 
 ```bash
-kubectl -n chargeops create job --from=cronjob/collector-v2-check collector-v2-check-manual-$(date +%s)
+kubectl -n ops create job --from=cronjob/collector-v2-check collector-v2-check-manual-$(date +%s)
 ```
 
 status와 info는 서로 다른 CronJob이므로 concurrencyPolicy로 둘 사이 실행을 막지는 못합니다.

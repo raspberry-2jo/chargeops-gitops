@@ -21,6 +21,8 @@
 name/newName, Image Updater의 imageName 및 kustomize.name을 동일한 주소로 맞춥니다.
 새 레지스트리에서 확인되지 않은 이전 digest를 재사용하지 않습니다.
 Kubernetes namespace, Application 이름, Service 이름, Secret 참조 이름과 서버 IP는 Git 주소 변경 때문에 바꾸지 않습니다.
+현재 앱 배포 namespace는 별도 변경 요청에 따라 `ops`이며, Argo CD와 ImageUpdater는 `argocd`에 유지합니다.
+기존 클러스터 전환 시 Secret/PVC와 이전 리소스 처리는 [namespace 전환 절차](namespace-migration.md)를 따릅니다.
 실제 Jenkins 서버가 달라지면 `base/chatops-bot-v2/deployment.yaml`의 `JENKINS_URL`도 변경합니다.
 
 ## Jenkins CI/CD 연결
@@ -44,7 +46,7 @@ GitOps 검증 Job `chargeops-gitops-ci`:
 4. Build Now로 Kustomize 렌더링과 `scripts/validate-registry.sh`의 이미지 주소 검사를 수행합니다.
    결과 YAML은 빌드 artifact로 저장합니다.
 5. 실제 클러스터 검증에는 Secret file 형식 kubeconfig credential을 등록하고 `KUBECONFIG_CREDENTIAL_ID`에 그 ID를 입력합니다.
-   `chargeops` namespace, Argo CD 및 ImageUpdater CRD가 먼저 있어야 하며 해당 리소스 dry-run 권한이 필요합니다.
+   `ops` namespace, Argo CD 및 ImageUpdater CRD가 먼저 있어야 하며 해당 리소스 dry-run 권한이 필요합니다.
    다운로드 버전은 `KUBECTL_VERSION`으로 지정하며 기본값은 `v1.36.1`입니다.
    서버 dry-run을 사용할 때는 클러스터 minor 버전에 맞추세요. 기존 설치가 있으면 이 파라미터로 교체하지 않습니다.
 
@@ -82,7 +84,7 @@ kubectl apply -f chargeops-chatops/argocd/application.yaml
 kubectl apply -f chargeops-chatops/argocd/image-updater.yaml
 kubectl -n argocd get application chargeops-chatops-dev
 kubectl -n argocd describe imageupdater chargeops-image-updater
-kubectl -n chargeops get deployments,pods,services,cronjobs,pvc
+kubectl -n ops get deployments,pods,services,cronjobs,pvc
 ```
 
 배포 흐름: 앱 소스 변경 → Jenkins 테스트/이미지 Push → Image Updater가 이 저장소 main에 digest 커밋 → Argo CD Sync.
