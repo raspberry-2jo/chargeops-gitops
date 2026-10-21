@@ -16,39 +16,30 @@ resources:
   - ../../base/collector-v2
 
 images:
-  - name: chanjookim/chargeops-chatops-bot
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
     newTag: dev
-    newName: docker.io/chanjookim/chargeops-chatops-bot
-    digest: sha256:2818797110a1e63041cdfe5bc870477dd36114a6fa7d95b2ad26ee054a045544
-  - name: chanjookim/chargeops-alert-router
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
     newTag: dev
-    newName: docker.io/chanjookim/chargeops-alert-router
-    digest: sha256:44954c280968a5696f231ce98bec9a01d7b2017787fb96f5393c298e44f7b36c
-  - name: chanjookim/chargeops-mock-csms
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms
     newTag: dev
-    newName: docker.io/chanjookim/chargeops-mock-csms
-    digest: sha256:d3bea48ae2707035bae95b60deeac05f6a9dce77ef14fc087b6a6c3d1b4ddcea
-  - name: chanjookim/chargeops-ai-gateway
-    newName: docker.io/chanjookim/chargeops-ai-gateway
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
     newTag: dev
-    digest: sha256:08ce60478b10f6fe1ac3418caf2e714b312ae0a1c56a6e1ce2cc03974a52dc21
-  - name: chanjookim/chargeops-v2-chatops-bot
-    newName: docker.io/chanjookim/chargeops-v2-chatops-bot
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot
     newTag: dev
-    digest: sha256:fcf4016324c4e03d184fea68377267a1ede851e354e30a24240841b2ff2eec7b
-  - name: chanjookim/chargeops-v2-csms
-    newName: docker.io/chanjookim/chargeops-v2-csms
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms
     newTag: dev
-    digest: sha256:03fe78e029ecd10349361938d2c7ba55f9a8f7f3a0161460d7c21376717795c7
-  - name: chanjookim/chargeops-v2-notifier
-    newName: docker.io/chanjookim/chargeops-v2-notifier
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier
     newTag: dev
-    digest: sha256:ae200e63946cf104d5d265978270700fcd07272c85a31dfe89cf43f09e46e8c2
-  - name: chanjookim/chargeops-v2-vcharger
-    newName: docker.io/chanjookim/chargeops-v2-vcharger
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger
     newTag: dev
-    digest: sha256:6bdbaeb207500f81b536e894c39865e1802f4a4ebba6a4141a71c1c7dc35c770
-  - name: chanjookim/chargeops-v2-collector
-    newName: docker.io/chanjookim/chargeops-v2-collector
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector
     newTag: dev
-    digest: sha256:b2713ed5144ac722c70787314135468123baa1dfff99191a213bc59432f776cc

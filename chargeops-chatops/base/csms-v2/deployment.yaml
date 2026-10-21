@@ -13,16 +13,14 @@ spec:
         app.kubernetes.io/name: csms-v2
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: harbor-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
       containers:
         - name: csms-v2
-          image: chanjookim/chargeops-v2-csms:dev
-          imagePullPolicy: IfNotPresent
+          image: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms:dev
+          imagePullPolicy: Always
           envFrom:
             - secretRef:
                 name: chargeops-app-secrets

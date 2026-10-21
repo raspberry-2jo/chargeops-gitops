@@ -22,8 +22,6 @@ spec:
             app.kubernetes.io/mode: status
         spec:
           automountServiceAccountToken: false
-          imagePullSecrets:
-            - name: harbor-pull
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -32,8 +30,8 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: chanjookim/chargeops-v2-collector:dev
-              imagePullPolicy: IfNotPresent
+              image: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
+              imagePullPolicy: Always
               args:
                 - status
               envFrom:
@@ -80,8 +78,6 @@ spec:
             app.kubernetes.io/mode: info
         spec:
           automountServiceAccountToken: false
-          imagePullSecrets:
-            - name: harbor-pull
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -90,8 +86,8 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: chanjookim/chargeops-v2-collector:dev
-              imagePullPolicy: IfNotPresent
+              image: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
+              imagePullPolicy: Always
               args:
                 - info
               envFrom:
@@ -138,8 +134,6 @@ spec:
             app.kubernetes.io/mode: check
         spec:
           automountServiceAccountToken: false
-          imagePullSecrets:
-            - name: harbor-pull
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -148,8 +142,8 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: chanjookim/chargeops-v2-collector:dev
-              imagePullPolicy: IfNotPresent
+              image: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
+              imagePullPolicy: Always
               args:
                 - check
               envFrom:

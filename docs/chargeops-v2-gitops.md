@@ -2,6 +2,8 @@
 
 > 이 문서는 원본 저장소의 적용 기록입니다. 저장소 이전 후 URL, 브랜치와 실행 경로는 [저장소 변경 내역과 CI/CD 연결 절차](repository-migration-and-cicd.md)를 따릅니다.
 > 현재 GitOps 저장소는 `raspberry-2jo/chargeops-gitops`, 브랜치는 `main`입니다.
+> 현재 이미지 주소와 배포 전 준비는 [레지스트리 전환 절차](registry-migration.md)를 따릅니다.
+> 아래 digest 보존 언급은 당시 기록이며, 레지스트리 전환 시 이전 digest는 제거했습니다.
 
 적용일: 2026-10-14. 로컬 `feature/chargeops-gitops` 기준 커밋: `a25679f`.
 작업 경로: `C:\Users\SBA_USER\codex-test\git-test\infra-test`.
@@ -22,7 +24,7 @@ CronJob timeZone은 Kubernetes 1.27 이상을 기준으로 합니다. [공식 Cr
 
 ## 배포 전 조건
 
-서비스 저장소에서 Jenkins 첫 빌드와 Docker Hub `dev` 이미지 생성을 먼저 완료합니다.
+서비스 저장소에서 Jenkins 빌드와 `registry.chargeops.lab:5000/chargeops/`의 `dev` 이미지 생성을 먼저 완료합니다.
 전체 Overlay는 모든 앱을 동시에 등록하므로 관련 조건이 빠지면 Application 전체가 Healthy가 되지 않을 수 있습니다.
 
 - DB: 실제 PgBouncer 주소, app_writer 계정, DB schema, `code_status.ocpp_status`, CH-01 seed.
@@ -33,8 +35,8 @@ CronJob timeZone은 Kubernetes 1.27 이상을 기준으로 합니다. [공식 Cr
   `10.10.40.10`. Collector DB 기본값: `10.10.30.11,10.10.30.12:6432`.
   실제 클러스터 주소가 다르면 관련 Deployment/ConfigMap을 먼저 수정합니다.
 - 기본 StorageClass 또는 collector PVC의 명시적 storageClassName.
-- 비공개 이미지는 Deployment 및 Collector CronJob **모두** Pod spec에 imagePullSecrets를 추가합니다.
-  Image Updater에도 registry 읽기 자격 증명이 필요합니다.
+- 현재 Docker Registry는 아이디·비밀번호 인증 없이 사용합니다.
+  Deployment, Collector CronJob 및 Image Updater는 레지스트리 로그인 Secret을 참조하지 않습니다.
 - CSMS REQUIRE_CN=false, vcharger ws://는 내부 실습 설정입니다. 외부 충전기에는 mTLS 설정이 필요합니다.
 
 ```bash

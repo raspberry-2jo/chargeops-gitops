@@ -1,5 +1,5 @@
 pipeline {
-  agent { label 'chargeops-agent' }
+  agent { label 'mgmt-agent' }
   options {
     timestamps()
     disableConcurrentBuilds()
@@ -34,6 +34,7 @@ pipeline {
           mkdir -p artifacts
           kubectl kustomize chargeops-chatops/overlays/dev > artifacts/chargeops-dev.yaml
           test -s artifacts/chargeops-dev.yaml
+          sh scripts/validate-registry.sh artifacts/chargeops-dev.yaml
         '''
       }
     }

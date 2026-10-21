@@ -13,16 +13,14 @@ spec:
         app: ai-gateway
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: harbor-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
       containers:
         - name: ai-gateway
-          image: chanjookim/chargeops-ai-gateway:dev
-          imagePullPolicy: IfNotPresent
+          image: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev
+          imagePullPolicy: Always
           command:
             - python
             - -m

@@ -13,16 +13,14 @@ spec:
         app: alert-router
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: harbor-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
       containers:
         - name: router
-          image: chanjookim/chargeops-alert-router:initial
-          imagePullPolicy: IfNotPresent
+          image: registry.chargeops.lab:5000/chargeops/chargeops-alert-router:dev
+          imagePullPolicy: Always
           command:
             - python
             - -m

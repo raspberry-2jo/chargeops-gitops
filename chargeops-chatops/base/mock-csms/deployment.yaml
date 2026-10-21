@@ -13,8 +13,6 @@ spec:
         app: mock-csms
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: harbor-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -22,8 +20,8 @@ spec:
         fsGroup: 10001
       containers:
         - name: csms
-          image: chanjookim/chargeops-mock-csms:initial
-          imagePullPolicy: IfNotPresent
+          image: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms:dev
+          imagePullPolicy: Always
           command:
             - python
             - -m

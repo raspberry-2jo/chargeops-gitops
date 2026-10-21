@@ -16,66 +16,66 @@ spec:
     - namePattern: chargeops-chatops-dev
       images:
         - alias: bot
-          imageName: docker.io/chanjookim/chargeops-chatops-bot:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-chatops-bot
+              name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
         - alias: router
-          imageName: docker.io/chanjookim/chargeops-alert-router:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-alert-router:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-alert-router
+              name: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
         - alias: csms
-          imageName: docker.io/chanjookim/chargeops-mock-csms:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-mock-csms
+              name: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms
         - alias: chargeops-ai-gateway
-          imageName: docker.io/chanjookim/chargeops-ai-gateway:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-ai-gateway
+              name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
         - alias: chatops-bot-v2
-          imageName: docker.io/chanjookim/chargeops-v2-chatops-bot:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-v2-chatops-bot
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot
         - alias: csms-v2
-          imageName: docker.io/chanjookim/chargeops-v2-csms:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-v2-csms
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms
         - alias: notifier-v2
-          imageName: docker.io/chanjookim/chargeops-v2-notifier:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-v2-notifier
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier
         - alias: vcharger-v2
-          imageName: docker.io/chanjookim/chargeops-v2-vcharger:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger:dev
           commonUpdateSettings:
             updateStrategy: digest
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-v2-vcharger
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger
         - alias: collector-v2
-          imageName: docker.io/chanjookim/chargeops-v2-collector:dev
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
           commonUpdateSettings:
             updateStrategy: digest
             forceUpdate: true
           manifestTargets:
             kustomize:
-              name: chanjookim/chargeops-v2-collector
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector

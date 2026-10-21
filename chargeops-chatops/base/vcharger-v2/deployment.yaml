@@ -13,16 +13,14 @@ spec:
         app.kubernetes.io/name: vcharger-v2
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: harbor-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
       containers:
         - name: vcharger-v2
-          image: chanjookim/chargeops-v2-vcharger:dev
-          imagePullPolicy: IfNotPresent
+          image: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger:dev
+          imagePullPolicy: Always
           args:
             - --url
             - ws://csms-v2:9000/ocpp
