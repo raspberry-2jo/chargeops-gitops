@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vcharger-v2
+  name: vcharger
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: vcharger-v2
+      app.kubernetes.io/name: vcharger
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: vcharger-v2
+        app.kubernetes.io/name: vcharger
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -18,12 +18,12 @@ spec:
         runAsUser: 10001
         runAsGroup: 10001
       containers:
-        - name: vcharger-v2
-          image: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger:dev
+        - name: vcharger
+          image: registry.chargeops.lab:5000/chargeops/chargeops-vcharger:dev
           imagePullPolicy: Always
           args:
             - --url
-            - ws://csms-v2:9000/ocpp
+            - ws://csms:9000/ocpp
             - --ids
             - CH-01
             - --ramp

@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: csms-v2
+  name: csms
 spec:
   replicas: 0
   selector:
     matchLabels:
-      app.kubernetes.io/name: csms-v2
+      app.kubernetes.io/name: csms
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: csms-v2
+        app.kubernetes.io/name: csms
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -18,8 +18,8 @@ spec:
         runAsUser: 10001
         runAsGroup: 10001
       containers:
-        - name: csms-v2
-          image: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms:dev
+        - name: csms
+          image: registry.chargeops.lab:5000/chargeops/chargeops-csms:dev
           imagePullPolicy: Always
           envFrom:
             - secretRef:

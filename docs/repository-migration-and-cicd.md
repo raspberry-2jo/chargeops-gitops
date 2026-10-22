@@ -23,7 +23,7 @@ name/newName, Image Updater의 imageName 및 kustomize.name을 동일한 주소�
 Kubernetes namespace, Application 이름, Service 이름, Secret 참조 이름과 서버 IP는 Git 주소 변경 때문에 바꾸지 않습니다.
 현재 앱 배포 namespace는 별도 변경 요청에 따라 `ops`이며, Argo CD와 ImageUpdater는 `argocd`에 유지합니다.
 기존 클러스터 전환 시 Secret/PVC와 이전 리소스 처리는 [namespace 전환 절차](namespace-migration.md)를 따릅니다.
-실제 Jenkins 서버가 달라지면 `base/chatops-bot-v2/deployment.yaml`의 `JENKINS_URL`도 변경합니다.
+실제 Jenkins 서버가 달라지면 `base/chatops-bot/deployment.yaml`의 `JENKINS_URL`도 변경합니다.
 
 ## Jenkins CI/CD 연결
 
@@ -89,7 +89,7 @@ kubectl -n ops get deployments,pods,services,cronjobs,pvc
 
 배포 흐름: 앱 소스 변경 → Jenkins 테스트/이미지 Push → Image Updater가 이 저장소 main에 digest 커밋 → Argo CD Sync.
 롤백은 digest 변경 커밋을 revert하고, Image Updater가 다시 덮어쓰지 않도록 해당 이미지 업데이트를 조정합니다.
-이전 기록과 DB/Slack/PVC 등의 전제조건은 [기존 GitOps 적용 기록](chargeops-v2-gitops.md)을 참고합니다.
+이전 기록과 DB/Slack/PVC 등의 전제조건은 [기존 GitOps 적용 기록](chargeops-gitops.md)을 참고합니다.
 
 공식 참고: [Jenkins Pipeline](https://www.jenkins.io/doc/book/pipeline/syntax/),
 [Argo CD 자동 Sync](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/).
