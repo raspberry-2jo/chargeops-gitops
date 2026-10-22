@@ -106,6 +106,8 @@ GUI에서 `chargeops-dev`가 신규 Dev, 기존 `chargeops-chatops-dev`가 Ops�
 
 검증 kubeconfig는 `dev/jenkins-dev-verifier` ServiceAccount 또는 동등한 제한 권한을 사용한다. Dev Deployment·Pod·ConfigMap 읽기, 검증 Job 생성/조회, 로그 읽기와 `argocd/chargeops-dev` 단일 Application 읽기만 허용한다. Ops 리소스 쓰기·Secret 읽기는 부여하지 않는다. ServiceAccount 토큰의 유효 기간과 Jenkins credential 갱신은 운영 정책에 맞춘다. 기본 사용자 kubeconfig나 cluster-admin kubeconfig를 검증 credential로 등록하지 않는다.
 
+mgmt의 관리자 컨텍스트에서 `.ci-venv/bin/python scripts/prepare-dev-kubeconfig.py`를 실행하면 Namespace·검증 계정/RBAC만 준비하고 권한을 검사한 뒤 `~/.chargeops-jenkins/dev-kubeconfig.yaml`을 권한 600으로 생성한다. 앱을 배포하거나 Ops 워크로드를 변경하지 않는다. 이 파일을 브라우저 PC로 안전하게 전송한 뒤 Jenkins `Secret file` 타입, ID `chargeops-dev-kubeconfig`로 등록한다. 토큰은 기본 24시간을 요청하며 API 서버가 제한할 수 있다. 출력되는 실제 만료 시각 전에 같은 명령으로 재생성하고 Jenkins 파일을 교체한다. 필요한 유효기간은 `--duration 168h` 등으로 요청할 수 있으며, 영구 토큰을 생성하지 않는다. 파일 내용이나 인증 값은 대화·Git에 넣지 않는다.
+
 승인자는 Jenkinsfile의 `submitter: 'admin'`이다. Job/Replay/Configure 권한과 저장소 쓰기 권한을 제한해야 승인 우회를 줄일 수 있다. Git 서버의 branch protection, Argo CD 사용자 RBAC, Jenkins 사용자·credential 생성은 이 저장소 변경만으로 적용되지 않는다. 관리자 권한자는 정책을 우회할 수 있다.
 
 Image Updater용 계정은 Dev 변경 용도로만 사용하고 운영 파일 변경은 코드 리뷰/보호 규칙으로 통제한다. 한 Git 브랜치의 토큰만으로 경로별 쓰기 권한이 자동 분리되는 것은 아니다. 운영에는 Auto Sync가 없으므로 Git 변경만으로 Ops 배포가 실행되지는 않는다. 공통 Base 변경은 운영 변경으로 검토한다.
