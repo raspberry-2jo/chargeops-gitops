@@ -2,8 +2,29 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize('code', [401, 404, 503])
+def test_registry_failure_identifies_image_and_status_without_response_payload(monkeypatch, code):
+    from urllib.error import HTTPError
+    from io import BytesIO
+    spec = importlib.util.spec_from_file_location('freeze_registry', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    def fail(*args, **kwargs):
+        raise HTTPError('http://proxy.invalid/private', code, 'response-message-must-not-be-logged',
+                        {}, BytesIO(b'response-body-must-not-be-logged'))
+    monkeypatch.setattr(module, 'urlopen', fail)
+    reference = 'registry.chargeops.lab:5000/chargeops/chargeops-csms:dev'
+    with pytest.raises(Exception) as error:
+        module.manifest(reference)
+    message = str(error.value)
+    assert f'HTTP {code}' in message
+    assert reference in message
+    assert 'response-message' not in message and 'response-body' not in message
 
 
 def test_environment_boundaries():

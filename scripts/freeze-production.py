@@ -10,11 +10,16 @@ from pathlib import Path
 import re
 import subprocess
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = 'registry.chargeops.lab:5000'
+
+
+class RegistryLookupError(RuntimeError):
+    """Only validated image references and fixed diagnostic text may be logged."""
 
 
 def kubectl(*args):
@@ -37,8 +42,17 @@ def manifest(reference):
     request = Request(f'http://{REGISTRY}/v2/{path}/manifests/{selector}', headers={'Accept': ', '.join([
         'application/vnd.oci.image.index.v1+json', 'application/vnd.docker.distribution.manifest.list.v2+json',
         'application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.v2+json'])})
-    with urlopen(request, timeout=30) as response:
-        body, digest = response.read(), response.headers.get('Docker-Content-Digest')
+    try:
+        with urlopen(request, timeout=30) as response:
+            body, digest = response.read(), response.headers.get('Docker-Content-Digest')
+    except HTTPError as error:
+        hints = {401: 'Registry authentication is required.',
+                 403: 'Registry access is denied.',
+                 404: 'Repository, tag or digest is missing; compare GitOps with the existing running image.'}
+        hint = hints.get(error.code, 'Check the Registry/proxy HTTP service and connectivity.')
+        raise RegistryLookupError(f'HTTP {error.code} while reading {reference}. {hint}') from None
+    except URLError:
+        raise RegistryLookupError(f'Cannot reach Registry while reading {reference}. Check DNS, port 5000 and proxy settings.') from None
     assert digest == 'sha256:' + hashlib.sha256(body).hexdigest(), 'Registry manifest digest mismatch'
     children = {m['digest'] for m in json.loads(body).get('manifests', [])}
     return repository, digest, children | {digest}
@@ -97,7 +111,11 @@ def main():
 if __name__ == '__main__':
     try:
         main()
+    except RegistryLookupError as error:
+        print(f'Preflight stopped: {error}')
+        print('Production image settings were not written; Kubernetes was not changed.')
+        raise SystemExit(1)
     except Exception as error:
         # Do not echo exceptions or DSNs from parsers, registry or kubectl.
-        print(f'Preflight stopped ({error.__class__.__name__}). Check readiness, DB identities, updater, auto Sync and image baseline. No credentials printed.')
+        print(f'Preflight stopped ({error.__class__.__name__}). Check readiness, existing DB settings, updater, auto Sync and image baseline. No credentials printed.')
         raise SystemExit(1)
