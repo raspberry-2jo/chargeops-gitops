@@ -23,7 +23,7 @@ namespace 변경은 기존 리소스의 이름 변경이나 데이터 이동을 
    `chatops-config.CSMS_URL`은 기존 bot/router와 API가 호환되는 실제 CSMS 주소로 설정합니다.
    사용하는 서비스에 필요한 값이 있어야 하며 기존 namespace에서 자동 공유되지 않습니다.
    레지스트리는 익명 접근이므로 이미지 pull Secret은 필요하지 않습니다.
-2. 기존 Collector PVC에 데이터가 있다면 `ops/collector-v2-raw`로 사용할 스토리지와 데이터 이전을 별도로 준비합니다.
+2. 기존 Collector PVC에 데이터가 있다면 `ops/collector-raw`로 사용할 스토리지와 데이터 이전을 별도로 준비합니다.
    새 namespace에 같은 이름의 PVC를 생성해도 기존 데이터가 자동으로 옮겨지지 않습니다.
 3. 외부 모니터링, RBAC, NetworkPolicy 및 전체 Service DNS를 쓰는 호출자가 있다면 `ops`를 허용하도록 맞춥니다.
 4. 기존 앱과 새 앱이 동시에 실행되지 않도록 전환 시점을 조정합니다.
