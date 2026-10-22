@@ -2,17 +2,17 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: dev
 resources:
-  - ../../base/csms
-  - namespace.yaml
-  - configmap.yaml
-  - headless-service.yaml
-  - resourcequota.yaml
-  - limitrange.yaml
-  - networkpolicy.yaml
-  - rbac.yaml
+- ../../base/csms
+- namespace.yaml
+- configmap.yaml
+- headless-service.yaml
+- resourcequota.yaml
+- limitrange.yaml
+- networkpolicy.yaml
+- rbac.yaml
 patches:
-  - path: csms-patch.yaml
+- path: csms-patch.yaml
 images:
-  - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
-    newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-    newTag: dev
+- name: registry.chargeops.lab:5000/chargeops/chargeops-csms
+  newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
+  digest: sha256:91a04d55943d865865d37f87d0fc2e25e53b132134b76e22f00b5cd7ed859b7d
