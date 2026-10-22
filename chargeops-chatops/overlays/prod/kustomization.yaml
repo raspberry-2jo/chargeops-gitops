@@ -11,20 +11,19 @@ resources:
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
   newName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
-  newTag: dev
+  digest: sha256:5f9148788005aea4eae5e39ae8323af1ad5ba1d827fadf4600e150e6047edeb8
 - name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
   newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
-  newTag: dev
   digest: sha256:8137664a6dda4cbb20065c839d98f80832d0fb5a5feaeb7dd2bc5e40127757ba
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  newTag: dev
+  digest: sha256:32af39b5140bdef430c2808d8a9b160d8b92024d49d052585e3b4fe12cebe691
 - name: registry.chargeops.lab:5000/chargeops/chargeops-notifier
   newName: registry.chargeops.lab:5000/chargeops/chargeops-notifier
-  newTag: dev
+  digest: sha256:041f44071b1ab34b30705484afea3cdce2ec3a2e7c20e6fd0fffedb9776e8ac9
 - name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
   newName: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
-  newTag: dev
+  digest: sha256:2725d8eff0dd8dfe0a081b5489a9887307eeb3541cfbeb90813f2a67f68cb2ac
 - name: registry.chargeops.lab:5000/chargeops/collector
   newName: registry.chargeops.lab:5000/chargeops/collector
-  newTag: '0.2'
+  digest: sha256:7e4a1d30dd73f89ca5ecd1453fc56d140f5013f4090e4847612bf8dbf0a871aa
