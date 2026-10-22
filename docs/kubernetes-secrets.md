@@ -1,7 +1,7 @@
 # Kubernetes Secret 준비 목록
 
-현재 렌더링되는 GitOps 매니페스트 기준으로 직접 참조하는 Secret은 총 2개입니다.
-앱용 1개는 `ops`, Image Updater Git write-back용 1개는 `argocd`에 생성합니다.
+현재 렌더링되는 GitOps 매니페스트 기준으로 직접 참조하는 Secret은 총 3개입니다.
+앱용 2개는 `ops`, Image Updater Git write-back용 1개는 `argocd`에서 준비합니다.
 이 저장소는 Secret 생성 매니페스트나 실제 값을 포함하지 않습니다.
 실제 클러스터의 생성 여부와 값은 확인하지 않았습니다.
 
@@ -9,7 +9,13 @@
 
 | Secret 이름 | 준비할 키 | 사용 리소스 |
 |---|---|---|
-| `chargeops-app-secrets` | 아래 공통 키 목록 | ai-gateway, chatops-bot, csms, notifier, Collector CronJob 3개 |
+| `chargeops-secrets` | `DB_DSN`, `CSMS_API_TOKEN` | csms |
+| `chargeops-app-secrets` | 아래 공통 키 목록 | ai-gateway, chatops-bot, notifier, Collector CronJob 3개 |
+
+CSMS는 사용자가 존재와 키 목록을 확인한 기존 `ops/chargeops-secrets`를 사용한다.
+`DB_DSN`은 같은 이름의 환경변수로, `CSMS_API_TOKEN`은 CSMS가 읽는 `API_TOKEN` 환경변수로 주입한다.
+두 키만 `secretKeyRef`로 참조하며 실제 값과 DB 연결 성공 여부는 확인하지 않았다.
+bot/notifier가 사용하는 `CSMS_API_TOKEN` 값은 CSMS에 주입되는 토큰과 일치해야 한다.
 
 bot은 우선 적용한 원본처럼 `chargeops-app-secrets`만 주입합니다.
 bot의 역할·승인 정책은 DB의 `ops_role` 등을 사용하므로 DB_DSN도 준비해야 합니다.
@@ -41,7 +47,7 @@ S3 업로드를 켜는 경우 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` 및 �
 
 ### 필수 여부와 현재 실행 상태
 
-- `chatops-bot`, `csms`, `notifier`는 replicas 0이며, 재개 전에 `chargeops-app-secrets`를 준비합니다. bot의 Recreate 전략은 유지합니다.
+- `chatops-bot`, `csms`, `notifier`는 replicas 2입니다. CSMS는 `chargeops-secrets`의 위 두 키가 필요하며, bot/notifier는 여전히 `chargeops-app-secrets`가 필요합니다. bot의 Recreate 전략은 유지합니다.
 - Collector CronJob 3개는 `suspend: true`이며, 실행 또는 수동 Job 생성 전에 API/DB 키를 준비합니다.
 - `ai-gateway`의 `DB_DSN` 참조만 `optional: true`입니다. Secret/키 없이 Pod를 시작할 수 있게 한 설정이며
   DB를 사용하는 업무 기능에 실제 연결이 필요하다는 기존 문서 조건은 별개입니다.

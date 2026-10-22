@@ -22,10 +22,17 @@ spec:
         - name: csms
           image: registry.chargeops.lab:5000/chargeops/chargeops-csms:dev
           imagePullPolicy: Always
-          envFrom:
-            - secretRef:
-                name: chargeops-app-secrets
           env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: chargeops-secrets
+                  key: DB_DSN
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: chargeops-secrets
+                  key: CSMS_API_TOKEN
             - name: REQUIRE_CN
               value: 'false'
             - name: HEARTBEAT_INTERVAL
