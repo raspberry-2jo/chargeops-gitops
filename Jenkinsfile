@@ -32,9 +32,14 @@ pipeline {
         sh '''
           set -eu
           mkdir -p artifacts
-          kubectl kustomize chargeops-chatops/overlays/dev > artifacts/chargeops-dev.yaml
-          test -s artifacts/chargeops-dev.yaml
-          sh scripts/validate-registry.sh artifacts/chargeops-dev.yaml
+          python3.12 -m venv .ci-venv
+          .ci-venv/bin/python -m pip install -r requirements-dev.txt
+          .ci-venv/bin/python -m pytest -q tests/
+          for ENVIRONMENT in dev development prod; do
+            kubectl kustomize "chargeops-chatops/overlays/$ENVIRONMENT" > "artifacts/chargeops-$ENVIRONMENT.yaml"
+            test -s "artifacts/chargeops-$ENVIRONMENT.yaml"
+            sh scripts/validate-registry.sh "artifacts/chargeops-$ENVIRONMENT.yaml"
+          done
         '''
       }
     }
@@ -44,8 +49,11 @@ pipeline {
         withCredentials([file(credentialsId: params.KUBECONFIG_CREDENTIAL_ID.trim(), variable: 'KUBECONFIG')]) {
           sh '''
             set -eu
-            kubectl apply --dry-run=server -f artifacts/chargeops-dev.yaml
+            kubectl apply --dry-run=server -f artifacts/chargeops-development.yaml
+            kubectl apply --dry-run=server -f artifacts/chargeops-prod.yaml
             kubectl apply --dry-run=server -f chargeops-chatops/argocd/application.yaml
+            kubectl apply --dry-run=server -f chargeops-chatops/argocd/application-dev.yaml
+            kubectl apply --dry-run=server -f chargeops-chatops/argocd/dev-verifier-rbac.yaml
             kubectl apply --dry-run=server -f chargeops-chatops/argocd/image-updater.yaml
           '''
         }
@@ -54,8 +62,11 @@ pipeline {
   }
   post {
     success {
-      archiveArtifacts artifacts: 'artifacts/chargeops-dev.yaml', fingerprint: true
+      archiveArtifacts artifacts: 'artifacts/chargeops-*.yaml', fingerprint: true
       echo 'Manifest validation passed. Argo CD and Image Updater handle deployment.'
+    }
+    cleanup {
+      sh 'rm -rf .ci-venv'
     }
   }
 }

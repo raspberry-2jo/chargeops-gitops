@@ -8,13 +8,10 @@ spec:
   source:
     repoURL: https://github.com/raspberry-2jo/chargeops-gitops.git
     targetRevision: main
-    path: chargeops-chatops/overlays/dev
+    path: chargeops-chatops/overlays/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: ops
   syncPolicy:
-    automated:
-      prune: false
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true

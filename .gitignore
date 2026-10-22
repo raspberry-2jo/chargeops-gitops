@@ -2,3 +2,6 @@
 /.ci-bin/
 *.env
 !*.env.example
+.ci-venv/
+__pycache__/
+.pytest_cache/

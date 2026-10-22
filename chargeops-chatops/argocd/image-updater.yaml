@@ -13,22 +13,8 @@ spec:
       branch: main
       writeBackTarget: kustomization
   applicationRefs:
-  - namePattern: chargeops-chatops-dev
+  - namePattern: chargeops-dev
     images:
-    - alias: chatops-bot
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
-    - alias: chargeops-ai-gateway
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
     - alias: csms
       imageName: registry.chargeops.lab:5000/chargeops/chargeops-csms:dev
       commonUpdateSettings:
@@ -36,17 +22,3 @@ spec:
       manifestTargets:
         kustomize:
           name: registry.chargeops.lab:5000/chargeops/chargeops-csms
-    - alias: notifier
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-notifier:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-notifier
-    - alias: vcharger
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-vcharger:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
