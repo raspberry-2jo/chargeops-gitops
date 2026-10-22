@@ -1,14 +1,14 @@
 # ChargeOps Docker Registry 전환
 
-모든 앱 이미지의 접두사는 `registry.chargeops.lab:5000/chargeops/`입니다. 현재 이름과 전환 순서는 [앱 이름 통합](app-naming-migration.md)을 우선 참고합니다.
+모든 앱 이미지의 접두사는 `registry.chargeops.lab:5000/chargeops/`입니다.
 Jenkins GitOps 검증 Job은 Linux agent label `mgmt-agent`를 사용합니다.
 앱 배포 namespace는 `ops`이며 Argo CD와 ImageUpdater 리소스는 `argocd`에 둡니다.
 
 ## 변경 내용
 
-- 현재 Overlay는 Deployment 5개 및 Collector CronJob 3개의 이미지 주소를 관리합니다.
+- 현재 Base Deployment 7개 및 Collector CronJob 3개의 이미지 주소를 관리합니다.
   이미지 태그는 Image Updater가 추적하는 `dev`로 통일했습니다.
-- Overlay의 이미지 6종 `name`/`newName`과 ImageUpdater의 `imageName`/Kustomize 대상 이름을
+- Overlay의 이미지 8종 `name`/`newName`과 ImageUpdater의 `imageName`/Kustomize 대상 이름을
   Base와 동일하게 변경했습니다. 기존 Git write-back과 digest 전략을 유지합니다.
 - 이전 레지스트리의 digest는 새 저장소에 존재하는지 확인할 수 없어 제거했습니다.
   최초에는 `:dev`를 사용하고 Image Updater가 새 레지스트리의 digest를 Git에 기록합니다.
@@ -29,11 +29,13 @@ Jenkins GitOps 검증 Job은 Linux agent label `mgmt-agent`를 사용합니다.
 | 이미지명 | 사용 리소스 |
 |---|---|
 | chargeops-chatops-bot | Deployment/chatops-bot |
+| chargeops-alert-router | Deployment/alert-router |
 | chargeops-ai-gateway | Deployment/ai-gateway |
-| chargeops-csms | Deployment/csms |
-| chargeops-notifier | Deployment/notifier |
-| chargeops-vcharger | Deployment/vcharger |
-| chargeops-collector | Collector CronJob 3개 |
+| chargeops-v2-chatops-bot | Deployment/chatops-bot-v2 |
+| chargeops-v2-csms | Deployment/csms-v2 |
+| chargeops-v2-notifier | Deployment/notifier-v2 |
+| chargeops-v2-vcharger | Deployment/vcharger-v2 |
+| chargeops-v2-collector | Collector CronJob 3개 |
 
 예: `registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev`.
 중지된 서비스도 재개할 때 필요하므로 함께 준비합니다.

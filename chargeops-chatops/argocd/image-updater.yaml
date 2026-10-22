@@ -4,7 +4,7 @@ metadata:
   name: chargeops-image-updater
   namespace: argocd
   annotations:
-    gitops-verification: bootstrap-test-2
+    gitops-verification: "bootstrap-test-2"
 spec:
   writeBackConfig:
     method: git:secret:chargeops-git-write
@@ -13,48 +13,62 @@ spec:
       branch: main
       writeBackTarget: kustomization
   applicationRefs:
-  - namePattern: chargeops-chatops-dev
-    images:
-    - alias: bot
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
-    - alias: chargeops-ai-gateway
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
-    - alias: csms
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-csms:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-csms
-    - alias: notifier
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-notifier:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-notifier
-    - alias: vcharger
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-vcharger:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
-    - alias: collector
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-        forceUpdate: true
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-collector
+    - namePattern: chargeops-chatops-dev
+      images:
+        - alias: bot
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
+        - alias: router
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-alert-router:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
+        - alias: chargeops-ai-gateway
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
+        - alias: chatops-bot-v2
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot
+        - alias: csms-v2
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms
+        - alias: notifier-v2
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier
+        - alias: vcharger-v2
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger
+        - alias: collector-v2
+          imageName: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
+          commonUpdateSettings:
+            updateStrategy: digest
+            forceUpdate: true
+          manifestTargets:
+            kustomize:
+              name: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector

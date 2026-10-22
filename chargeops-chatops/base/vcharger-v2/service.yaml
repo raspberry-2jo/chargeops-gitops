@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vcharger
+  name: vcharger-v2
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: vcharger
+    app.kubernetes.io/name: vcharger-v2
   ports:
     - name: control
       port: 8081

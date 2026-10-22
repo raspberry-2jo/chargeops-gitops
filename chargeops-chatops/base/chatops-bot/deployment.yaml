@@ -20,33 +20,30 @@ spec:
         runAsUser: 10001
         runAsGroup: 10001
       containers:
-      - name: bot
-        image: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev
-        imagePullPolicy: Always
-        command:
-        - python
-        - -m
-        - chatops_bot.app
-        env:
-        - name: CSMS_URL
-          value: http://csms:8000
-        - name: AI_URL
-          value: http://ai-gateway:8000
-        - name: JENKINS_URL
-          value: http://10.10.40.10:8080
-        envFrom:
-        - secretRef:
-            name: chargeops-app-secrets
-        - configMapRef:
-            name: chatops-config
-        - secretRef:
-            name: slack-credentials
-        - secretRef:
-            name: bot-backend-credentials
-        resources:
-          requests:
-            cpu: 50m
-            memory: 96Mi
-          limits:
-            cpu: 400m
-            memory: 256Mi
+        - name: bot
+          image: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev
+          imagePullPolicy: Always
+          command:
+            - python
+            - -m
+            - app.bot
+          env:
+            - name: CSMS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chatops-config
+                  key: CSMS_URL
+          envFrom:
+            - configMapRef:
+                name: chatops-config
+            - secretRef:
+                name: slack-credentials
+            - secretRef:
+                name: bot-backend-credentials
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 400m
+              memory: 256Mi

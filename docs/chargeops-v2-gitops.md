@@ -1,6 +1,4 @@
-# ChargeOps GitOps 적용 기록과 실행 절차
-
-> 최신 이름 통합과 기존 파일 우선 처리 결과는 [앱 이름 통합](app-naming-migration.md)을 따릅니다. 아래는 최초 구성의 역사적 기록이며 현재 리소스 수·실행 상태는 해당 문서를 우선합니다.
+# ChargeOps v2 GitOps 적용 기록과 실행 절차
 
 > 이 문서는 원본 저장소의 적용 기록입니다. 저장소 이전 후 URL, 브랜치와 실행 경로는 [저장소 변경 내역과 CI/CD 연결 절차](repository-migration-and-cicd.md)를 따릅니다.
 > 현재 GitOps 저장소는 `raspberry-2jo/chargeops-gitops`, 브랜치는 `main`입니다.
@@ -13,11 +11,11 @@
 ## 적용과 원문 보정
 
 - 기존 세 Base, 이미지 digest, Application 이름과 경로를 유지했습니다.
-- AI gateway,  bot, CSMS, notifier, vcharger Base 및 collector ConfigMap/PVC/CronJob 3개를 추가했습니다.
+- AI gateway, v2 bot, CSMS, notifier, vcharger Base 및 collector ConfigMap/PVC/CronJob 3개를 추가했습니다.
 - Overlay와 ImageUpdater에 총 아홉 이미지를 등록했습니다.
 - 기존 Application의 `spec.syncOptions`는 잘못된 위치였습니다. `spec.syncPolicy.syncOptions`로 옮겼습니다.
 - AI gateway의 `DB_DSN` Secret 참조를 추가했습니다. 프로세스 확인부터 할 수 있게 optional로 두었으며, 업무 API에는 실제 DB Secret이 필요합니다. Ollama 주소/모델도 명시했습니다.
--  bot와 notifier는 replica 1 및 Recreate를 사용합니다. RollingUpdate 중 기존/신규 프로세스가 겹쳐 중복 이벤트·알림을 만들 수 있기 때문입니다. 교체 중 잠시 중단됩니다.
+- v2 bot와 notifier는 replica 1 및 Recreate를 사용합니다. RollingUpdate 중 기존/신규 프로세스가 겹쳐 중복 이벤트·알림을 만들 수 있기 때문입니다. 교체 중 잠시 중단됩니다.
 - Collector는 세 CronJob 모두 suspend 상태입니다. 실행 Pod가 없는 상태에서도 digest를 추적하도록 해당 ImageUpdater alias에 `forceUpdate: true`를 추가했습니다.
 - Collector 컨테이너도 UID/GID 10001로 통일하고 PVC에 fsGroup 10001을 적용했습니다.
 
@@ -66,8 +64,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Kustomize 렌더링 실패' }
 # 클러스터가 연결된 터미널에서만 실행합니다.
 $rendered | kubectl apply --dry-run=server -f -
 if ($LASTEXITCODE -ne 0) { throw '클러스터 서버 검증 실패' }
-git add chargeops-chatops docs/chargeops-gitops.md
-git commit -m "feat(gitops): add ChargeOps  app manifests"
+git add chargeops-chatops docs/chargeops-v2-gitops.md
+git commit -m "feat(gitops): add ChargeOps v2 app manifests"
 git push origin feature/chargeops-gitops
 ```
 
@@ -98,8 +96,8 @@ kubectl -n ops port-forward service/ai-gateway 18000:8000
 ```
 
 다른 터미널에서 `curl -fsS http://127.0.0.1:18000/cicd-healthz`로 최초 marker v1을 확인합니다.
-서비스 저장소 문서의 v1 →  변경을 한 번 Push한 뒤 새 digest 커밋과 rollout을 확인합니다.
-Pod 교체 후 port-forward를 다시 열고 변경한 marker를 확인합니다.
+서비스 저장소 문서의 v1 → v2 변경을 한 번 Push한 뒤 새 digest 커밋과 rollout을 확인합니다.
+Pod 교체 후 port-forward를 다시 열고 marker v2를 확인합니다.
 
 ```bash
 git fetch origin
@@ -111,12 +109,12 @@ kubectl -n ops rollout status deployment/ai-gateway --timeout=180s
 
 ## Collector 활성화
 
-DB/API/PVC 준비를 확인한 후 `base/collector/cronjobs.yaml`의 status/info 두 리소스만
+DB/API/PVC 준비를 확인한 후 `base/collector-v2/cronjobs.yaml`의 status/info 두 리소스만
 `suspend: false`로 변경하고 GitOps에 커밋·Push합니다. check는 true로 둡니다.
 수동 check도 공공 API를 호출하므로 준비 후 실행합니다.
 
 ```bash
-kubectl -n ops create job --from=cronjob/collector-check collector-check-manual-$(date +%s)
+kubectl -n ops create job --from=cronjob/collector-v2-check collector-v2-check-manual-$(date +%s)
 ```
 
 status와 info는 서로 다른 CronJob이므로 concurrencyPolicy로 둘 사이 실행을 막지는 못합니다.
