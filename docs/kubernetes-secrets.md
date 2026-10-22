@@ -9,19 +9,21 @@
 
 | Secret 이름 | 준비할 키 | 사용 리소스 |
 |---|---|---|
-| `chargeops-secrets` | `DB_DSN`, `CSMS_API_TOKEN` | csms |
-| `chargeops-app-secrets` | 아래 공통 키 목록 | ai-gateway, chatops-bot, notifier, Collector CronJob 3개 |
+| `chargeops-secrets` | `DB_DSN`, `CSMS_API_TOKEN`, Slack 토큰·채널 등 아래 앱별 키 | csms, chatops-bot, notifier |
+| `chargeops-app-secrets` | 아래 공통 키 목록 중 각 앱이 사용하는 키 | ai-gateway, Collector CronJob 3개 |
 
 CSMS는 사용자가 존재와 키 목록을 확인한 기존 `ops/chargeops-secrets`를 사용한다.
 `DB_DSN`은 같은 이름의 환경변수로, `CSMS_API_TOKEN`은 CSMS가 읽는 `API_TOKEN` 환경변수로 주입한다.
 두 키만 `secretKeyRef`로 참조하며 실제 값과 DB 연결 성공 여부는 확인하지 않았다.
 bot/notifier가 사용하는 `CSMS_API_TOKEN` 값은 CSMS에 주입되는 토큰과 일치해야 한다.
 
-bot은 우선 적용한 원본처럼 `chargeops-app-secrets`만 주입합니다.
+bot과 notifier는 `chargeops-secrets`를 `envFrom`으로 주입합니다.
+사용자가 제공한 키 목록에는 notifier가 필수로 읽는 `SLACK_ALERT_CHANNEL`이 없으므로 실제 알림 채널 ID를 추가해야 합니다.
+bot의 `SLACK_AUDIT_CHANNEL`은 선택 항목이며 감사 알림을 사용할 경우 추가합니다.
 bot의 역할·승인 정책은 DB의 `ops_role` 등을 사용하므로 DB_DSN도 준비해야 합니다.
 이전 slack-credentials·bot-backend-credentials와 제외된 router용 Secret은 현재 렌더링되는 앱의 필수 목록에서 제외했습니다. 클러스터에 있는 Secret 자체를 삭제하지는 않았습니다.
 
-### chargeops-app-secrets 공통 키
+### 앱 Secret 키 목록
 
 | 키 | 용도 / 값 준비 |
 |---|---|
@@ -47,7 +49,7 @@ S3 업로드를 켜는 경우 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` 및 �
 
 ### 필수 여부와 현재 실행 상태
 
-- `chatops-bot`, `csms`, `notifier`는 replicas 2입니다. CSMS는 `chargeops-secrets`의 위 두 키가 필요하며, bot/notifier는 여전히 `chargeops-app-secrets`가 필요합니다. bot의 Recreate 전략은 유지합니다.
+- `chatops-bot`, `csms`, `notifier`는 replicas 2이며 `chargeops-secrets`를 사용합니다. CSMS는 위 두 키, bot은 `DB_DSN`·`SLACK_BOT_TOKEN`·`SLACK_APP_TOKEN`, notifier는 `DB_DSN`·`SLACK_BOT_TOKEN`·`SLACK_ALERT_CHANNEL` 등이 필요합니다. bot의 Recreate 전략은 유지합니다.
 - Collector CronJob 3개는 `suspend: true`이며, 실행 또는 수동 Job 생성 전에 API/DB 키를 준비합니다.
 - `ai-gateway`의 `DB_DSN` 참조만 `optional: true`입니다. Secret/키 없이 Pod를 시작할 수 있게 한 설정이며
   DB를 사용하는 업무 기능에 실제 연결이 필요하다는 기존 문서 조건은 별개입니다.

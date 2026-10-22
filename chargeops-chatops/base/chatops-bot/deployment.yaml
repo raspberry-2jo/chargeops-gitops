@@ -24,7 +24,7 @@ spec:
         imagePullPolicy: Always
         envFrom:
         - secretRef:
-            name: chargeops-app-secrets
+            name: chargeops-secrets
         env:
         - name: CSMS_URL
           value: http://csms:8000
