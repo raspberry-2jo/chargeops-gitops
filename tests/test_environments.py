@@ -7,6 +7,61 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize('suffix', [':dev', '@sha256:' + 'a' * 64, ':dev@sha256:' + 'a' * 64])
+def test_image_repository_preserves_port_and_strips_tag_digest(suffix):
+    spec = importlib.util.spec_from_file_location('freeze_reference', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    repository = 'registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway'
+    assert module.image_repository(repository + suffix) == repository
+    assert module.image_identity(repository + ':dev@sha256:' + 'a' * 64) == repository + '@sha256:' + 'a' * 64
+
+
+def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_path, monkeypatch):
+    import base64
+    import copy
+    import json
+    import yaml
+    spec = importlib.util.spec_from_file_location('freeze_complete', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    config_path = Path('chargeops-chatops/overlays/prod/kustomization.yaml')
+    config = yaml.safe_load((ROOT / config_path).read_text(encoding='utf-8'))
+    rendered = subprocess.check_output(['kubectl', 'kustomize', 'chargeops-chatops/overlays/prod'], cwd=ROOT, text=True, encoding='utf-8')
+    deployments = {d['metadata']['name']: d for d in yaml.safe_load_all(rendered) if d and d['kind'] == 'Deployment'}
+    target = tmp_path / config_path
+    target.parent.mkdir(parents=True)
+    target.write_text(yaml.safe_dump(config), encoding='utf-8')
+    monkeypatch.setattr(module, 'ROOT', tmp_path)
+    monkeypatch.setattr(module.subprocess, 'check_output', lambda *args, **kwargs: rendered)
+    def image_entry(reference):
+        return next(i for i in config['images'] if reference.startswith(i['newName'] + ':') or reference.startswith(i['newName'] + '@'))
+    def digest(entry): return entry.get('digest', 'sha256:' + 'a' * 64)
+    def manifest(reference):
+        entry = image_entry(reference)
+        return entry['newName'], digest(entry), {digest(entry)}
+    monkeypatch.setattr(module, 'manifest', manifest)
+    def kubectl(*args):
+        if 'application' in args: return {'spec': {'destination': {'namespace': 'ops'}}}
+        if 'imageupdater' in args: return {'spec': {'applicationRefs': [{'namePattern': 'chargeops-dev'}]}}
+        if 'secret' in args: return {'data': {'DB_DSN': base64.b64encode(b'shared test-only DB settings').decode(), 'CSMS_API_TOKEN': 'present'}}
+        if 'deployment' in args: return copy.deepcopy(deployments[args[-1]])
+        if 'pods' in args:
+            d = next(d for d in deployments.values() if args[-1] == ','.join(f'{k}={v}' for k,v in d['spec']['selector']['matchLabels'].items()))
+            c = d['spec']['template']['spec']['containers'][0]
+            entry = image_entry(c['image'])
+            return {'items': [{'metadata': {'name': f'{d["metadata"]["name"]}-{i}'}, 'spec': {'nodeName': 'test-worker'},
+                               'status': {'conditions': [{'type': 'Ready', 'status': 'True'}],
+                                          'containerStatuses': [{'name': c['name'], 'imageID': entry['newName'] + '@' + digest(entry)}]}}
+                              for i in range(d['spec']['replicas'])]}
+        raise AssertionError('Unexpected cluster request')
+    monkeypatch.setattr(module, 'kubectl', kubectl)
+    module.main()
+    frozen = yaml.safe_load(target.read_text())
+    assert all(i.get('digest') and 'newTag' not in i for i in frozen['images'])
+    assert {d['deployment'] for d in json.loads((tmp_path / 'artifacts/ops-baseline.json').read_text())['deployments']} == {'csms', 'ai-gateway', 'notifier'}
+
+
 def test_registry_lookup_uses_https(monkeypatch):
     import hashlib
     spec = importlib.util.spec_from_file_location('freeze_https', ROOT / 'scripts/freeze-production.py')

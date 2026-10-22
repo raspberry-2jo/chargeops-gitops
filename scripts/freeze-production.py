@@ -50,8 +50,23 @@ def check_database_settings():
     assert base64.b64decode(dev['DB_DSN']) == base64.b64decode(ops['DB_DSN']), 'Keep existing DB settings as requested'
 
 
+def image_repository(reference):
+    """Strip a tag and/or digest without stripping the registry port."""
+    name = reference.split('@', 1)[0]
+    parent, slash, leaf = name.rpartition('/')
+    return parent + slash + leaf.split(':', 1)[0]
+
+
+def image_identity(reference):
+    # With a digest present the optional tag does not affect image selection.
+    if '@' in reference:
+        return image_repository(reference) + '@' + reference.split('@', 1)[1]
+    return reference
+
+
 def manifest(reference):
     repository, selector = reference.split('@', 1) if '@' in reference else reference.rsplit(':', 1)
+    repository = image_repository(reference)
     assert repository.startswith(REGISTRY + '/chargeops/')
     path = repository.removeprefix(REGISTRY + '/')
     assert re.fullmatch(r'[a-z0-9/._-]+', path) and re.fullmatch(r'[A-Za-z0-9._:-]+', selector)
@@ -98,12 +113,12 @@ def main():
             continue
         live = kubectl('-n', 'ops', 'get', 'deployment', d['metadata']['name'])
         desired = d['spec']['template']['spec']['containers'][0]['image']
-        assert live['spec']['template']['spec']['containers'][0]['image'] == desired, 'Live/Git image differs; reconcile OPS baseline first'
+        assert image_identity(live['spec']['template']['spec']['containers'][0]['image']) == image_identity(desired), f'{d["metadata"]["name"]}: Live/Git image differs; reconcile OPS baseline first'
         selector = ','.join(f'{k}={v}' for k, v in live['spec']['selector']['matchLabels'].items())
         pods = kubectl('-n', 'ops', 'get', 'pods', '-l', selector)['items']
         pods = [p for p in pods if not p['metadata'].get('deletionTimestamp')]
         assert len(pods) == live['spec']['replicas'], 'OPS deployment is not stable'
-        repository = desired.split('@')[0].rsplit(':', 1)[0] if '@' not in desired else desired.split('@')[0]
+        repository = image_repository(desired)
         for pod in pods:
             assert any(c['type'] == 'Ready' and c['status'] == 'True' for c in pod['status'].get('conditions', [])), 'OPS Pod is not Ready'
             status = next(c for c in pod['status']['containerStatuses'] if c['name'] == d['spec']['template']['spec']['containers'][0]['name'])
@@ -132,6 +147,11 @@ if __name__ == '__main__':
     except RegistryLookupError as error:
         print(f'Preflight stopped: {error}')
         print('Production image settings were not written; Kubernetes was not changed.')
+        raise SystemExit(1)
+    except AssertionError as error:
+        # These messages are fixed local validation rules, never DSNs or HTTP bodies.
+        print(f'Preflight stopped: {error or "Invalid image configuration."}')
+        print('Kubernetes was not changed.')
         raise SystemExit(1)
     except Exception as error:
         # Do not echo exceptions or DSNs from parsers, registry or kubectl.
