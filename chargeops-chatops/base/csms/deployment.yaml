@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: csms
 spec:
-  replicas: 0
+  replicas: 2
   selector:
     matchLabels:
       app: csms
