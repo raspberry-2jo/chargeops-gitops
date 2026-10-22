@@ -30,4 +30,12 @@ GitOps의 이미지·서비스·리소스·폴더명에서 앱 버전 접미사�
 
 ## 검증 범위
 
+### 기존 리소스와의 Sync 호환성
+
+- `chatops-bot`, `csms`, `notifier` Deployment의 selector는 기존 `app: <이름>`을 유지한다. Pod에는 같은 `app` label과 Service가 사용하는 `app.kubernetes.io/name` label을 함께 둔다. Deployment의 selector는 생성 후 변경할 수 없으므로 이름 정리 시에도 바꾸지 않는다.
+- `collector-raw` PVC는 오류 로그에서 확인한 기존 StorageClass `local-path`를 명시한다. 이미 Bound된 PVC의 StorageClass를 제거하거나 변경하지 않으며, 기존 볼륨 이름을 매니페스트에 고정하지 않는다.
+- 수정 커밋 반영 후 Argo CD에서 Refresh하여 새 revision을 확인하고 일반 Sync를 실행한다. 이 오류를 해결하려고 Force/Replace를 켜거나 PVC를 삭제하지 않는다.
+- 로컬 렌더링은 실제 클러스터의 불변 필드 검증을 대체하지 못한다. 클러스터에 접속 가능한 Jenkins에서는 `KUBECONFIG_CREDENTIAL_ID`를 지정해 기존 Server dry-run 단계를 실행한다. 수동 확인은 `kubectl kustomize chargeops-chatops/overlays/dev | kubectl apply --dry-run=server -f -`로 한다.
+
+
 `kubectl kustomize chargeops-chatops/overlays/dev`와 `scripts/validate-registry.sh`로 리소스 렌더링·Registry 접두사를 확인한다. 중복 리소스 ID, 이미지 항목, Image Updater 이미지·alias, Service selector·backend URL 및 PVC·ConfigMap 참조도 확인한다. 실제 이미지 존재 여부, Secret 값, 클러스터 rollout과 데이터 이전은 로컬 검증에 포함하지 않는다.

@@ -6,10 +6,11 @@ spec:
   replicas: 0
   selector:
     matchLabels:
-      app.kubernetes.io/name: notifier
+      app: notifier
   template:
     metadata:
       labels:
+        app: notifier
         app.kubernetes.io/name: notifier
     spec:
       automountServiceAccountToken: false

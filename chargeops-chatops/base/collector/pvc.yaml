@@ -3,6 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: collector-raw
 spec:
+  storageClassName: local-path
   accessModes:
     - ReadWriteOnce
   resources:
