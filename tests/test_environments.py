@@ -17,7 +17,8 @@ def test_image_repository_preserves_port_and_strips_tag_digest(suffix):
     assert module.image_identity(repository + ':dev@sha256:' + 'a' * 64) == repository + '@sha256:' + 'a' * 64
 
 
-@pytest.mark.parametrize('scenario', ['matching', 'tag_moved', 'mixed_pods', 'missing_live_manifest'])
+@pytest.mark.parametrize('scenario', ['matching', 'tag_moved', 'mixed_pods', 'missing_live_manifest',
+                                      'pinned_git_live_tag', 'different_repository'])
 def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_path, monkeypatch, scenario):
     import base64
     import copy
@@ -29,6 +30,15 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
     config_path = Path('chargeops-chatops/overlays/prod/kustomization.yaml')
     config = yaml.safe_load((ROOT / config_path).read_text(encoding='utf-8'))
     rendered = subprocess.check_output(['kubectl', 'kustomize', 'chargeops-chatops/overlays/prod'], cwd=ROOT, text=True, encoding='utf-8')
+    if scenario in ['pinned_git_live_tag', 'different_repository']:
+        entry = next(i for i in config['images'] if i['name'].endswith('/chargeops-csms'))
+        entry['digest'] = 'sha256:' + 'a' * 64
+        entry.pop('newTag', None)
+        documents = list(yaml.safe_load_all(rendered))
+        for document in documents:
+            if document and document['kind'] == 'Deployment' and document['metadata']['name'] == 'csms':
+                document['spec']['template']['spec']['containers'][0]['image'] = entry['newName'] + '@' + entry['digest']
+        rendered = yaml.safe_dump_all(documents)
     deployments = {d['metadata']['name']: d for d in yaml.safe_load_all(rendered) if d and d['kind'] == 'Deployment'}
     target = tmp_path / config_path
     target.parent.mkdir(parents=True)
@@ -51,7 +61,12 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
         if 'application' in args: return {'spec': {'destination': {'namespace': 'ops'}}}
         if 'imageupdater' in args: return {'spec': {'applicationRefs': [{'namePattern': 'chargeops-dev'}]}}
         if 'secret' in args: return {'data': {'DB_DSN': base64.b64encode(b'shared test-only DB settings').decode(), 'CSMS_API_TOKEN': 'present'}}
-        if 'deployment' in args: return copy.deepcopy(deployments[args[-1]])
+        if 'deployment' in args:
+            live = copy.deepcopy(deployments[args[-1]])
+            if args[-1] == 'csms' and scenario in ['pinned_git_live_tag', 'different_repository']:
+                repository = 'apps' if scenario == 'different_repository' else 'chargeops-csms'
+                live['spec']['template']['spec']['containers'][0]['image'] = module.REGISTRY + '/chargeops/' + repository + ':dev'
+            return live
         if 'pods' in args:
             d = next(d for d in deployments.values() if args[-1] == ','.join(f'{k}={v}' for k,v in d['spec']['selector']['matchLabels'].items()))
             c = d['spec']['template']['spec']['containers'][0]
@@ -60,11 +75,11 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
                                'status': {'conditions': [{'type': 'Ready', 'status': 'True'}],
                                           'containerStatuses': [{'name': c['name'], 'imageID': entry['newName'] + '@' +
                                             (('sha256:' + ('c' if scenario == 'mixed_pods' and i else 'b') * 64)
-                                             if d['metadata']['name'] == 'csms' and scenario != 'matching' else digest(entry))}]}}
+                                             if d['metadata']['name'] == 'csms' and scenario in ['tag_moved', 'mixed_pods', 'missing_live_manifest'] else digest(entry))}]}}
                               for i in range(d['spec']['replicas'])]}
         raise AssertionError('Unexpected cluster request')
     monkeypatch.setattr(module, 'kubectl', kubectl)
-    if scenario in ['mixed_pods', 'missing_live_manifest']:
+    if scenario in ['mixed_pods', 'missing_live_manifest', 'different_repository']:
         original = target.read_text()
         with pytest.raises((AssertionError, module.RegistryLookupError)):
             module.main()

@@ -130,7 +130,11 @@ def main():
             continue
         live = kubectl('-n', 'ops', 'get', 'deployment', d['metadata']['name'])
         desired = d['spec']['template']['spec']['containers'][0]['image']
-        assert image_identity(live['spec']['template']['spec']['containers'][0]['image']) == image_identity(desired), f'{d["metadata"]["name"]}: Live/Git image differs; reconcile OPS baseline first'
+        live_image = live['spec']['template']['spec']['containers'][0]['image']
+        # A mutable live tag and a pinned Git digest can select the same image.
+        # Keep the repository boundary here; verify actual Pod identities against
+        # Registry manifests below before choosing the production baseline.
+        assert image_repository(live_image) == image_repository(desired), f'{d["metadata"]["name"]}: Live/Git image repository differs; reconcile OPS baseline first'
         selector = ','.join(f'{k}={v}' for k, v in live['spec']['selector']['matchLabels'].items())
         pods = kubectl('-n', 'ops', 'get', 'pods', '-l', selector)['items']
         pods = [p for p in pods if not p['metadata'].get('deletionTimestamp')]
@@ -156,7 +160,7 @@ def main():
         selected_live[repository] = chosen
         resolved[repository] = chosen
         baseline.append({'deployment': d['metadata']['name'], 'replicas': live['spec']['replicas'],
-                         'image': desired, 'pods': [
+                         'image': live_image, 'git_image': desired, 'pods': [
                              {'name': p['metadata']['name'], 'node': p['spec'].get('nodeName'),
                               'image_ids': [c.get('imageID') for c in p['status'].get('containerStatuses', [])]}
                              for p in pods]})
