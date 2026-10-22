@@ -10,7 +10,7 @@
 - 사용자의 후속 지시에 따라 DB 설정은 기존 값을 유지한다. 개발 Namespace의 별도 Secret에 DB DSN과 CSMS 토큰 두 키만 준비한다. DB 생성·스키마 변경·마이그레이션·기존 Secret 변경은 하지 않는다.
 - 기존 운영 Secret·ConfigMap·CA·PVC·Service·배치 작업은 복사해 Git 관리 대상으로 삼지 않는다.
 - 기본 통합 검증은 API `/healthz`, DB 읽기 전용 트랜잭션과 CSMS 기준 데이터 확인이다. 공유 DB에 OCPP 상태를 쓰는 검증은 기본 OFF이다.
-- Canary/Rollouts와 자동 롤백(8단계 이후)은 이번 범위 밖이다.
+- Canary/Rollouts와 자동 Git 복구는 선택 기능으로 추가했다. 활성화·검증 방법은 [Canary 배포 안내](canary-delivery.md)를 따른다. 초기 전환 전에는 기존 수동 Sync를 유지한다.
 
 ## 로컬에서 완료한 것과 서버에서 해야 하는 것
 
@@ -138,4 +138,4 @@ Image Updater용 계정은 Dev 변경 용도로만 사용하고 운영 파일 �
 - 환경 분리 구현 전체를 되돌릴 경우: 먼저 새 Dev Application의 자동 Sync를 끄고 Dev CSMS를 0으로 줄인다. 앱 저장소의 구현 커밋과 GitOps 구현 커밋을 각각 revert한다. 이후 기존 운영 Application/ImageUpdater 정의를 검토해 다시 적용한다. Namespace·Secret·PVC는 자동 삭제하지 않는다.
 - 구현 직전 기준: 앱 `58c4a18`, GitOps `4193e73`. `reset --hard`/강제 Push 대신 구현·승격 커밋별 revert를 사용한다. 후속 운영 변경을 함께 되돌리지 않는다.
 
-Canary 자동 중단과 GitOps 자동 복구는 아직 구현하지 않았다. 이번 단계는 Dev 검증과 사람 승인 후 동일 digest를 운영 Git에 반영하는 범위다.
+`ENABLE_CANARY=false`에서는 위 수동 절차를 사용한다. 초기 전환 후 `ENABLE_CANARY=true`이면 승인 후 자동 Canary Sync, 지표 검사, 실패 시 Git digest 복구와 재동기화가 실행된다. [Canary 배포 안내](canary-delivery.md)에 초기 전환과 장애 복구 절차가 있다.

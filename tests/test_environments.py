@@ -90,7 +90,8 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
     frozen = yaml.safe_load(target.read_text())
     assert all(i.get('digest') and 'newTag' not in i for i in frozen['images'])
     csms = next(i for i in frozen['images'] if i['name'].endswith('/chargeops-csms'))
-    assert csms['digest'] == 'sha256:' + ('b' if scenario == 'tag_moved' else 'a') * 64
+    expected = 'sha256:' + 'b' * 64 if scenario == 'tag_moved' else digest(next(i for i in config['images'] if i['name'].endswith('/chargeops-csms')))
+    assert csms['digest'] == expected
     assert {d['deployment'] for d in json.loads((tmp_path / 'artifacts/ops-baseline.json').read_text())['deployments']} == {'csms', 'ai-gateway', 'notifier'}
 
 

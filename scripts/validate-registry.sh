@@ -19,7 +19,7 @@ awk '
     ref = $2
     gsub(/["\047\r]/, "", ref)
     if (ref != "registry.chargeops.lab:5000/chargeops/collector:0.2" &&
-        ref !~ /^registry[.]chargeops[.]lab:5000\/chargeops\/[a-z0-9][a-z0-9._-]*(:dev|:dev@sha256:[a-f0-9]+|@sha256:[a-f0-9]+)$/) {
+        ref !~ /^registry[.]chargeops[.]lab:5000\/chargeops\/[a-z0-9][a-z0-9._-]*(:dev|(:[A-Za-z0-9_][A-Za-z0-9_.-]*)?@sha256:[a-f0-9]+)$/) {
       print "Unexpected container image: " ref > "/dev/stderr"
       failed = 1
     }

@@ -35,7 +35,7 @@ pipeline {
           python3.12 -m venv .ci-venv
           .ci-venv/bin/python -m pip install -r requirements-dev.txt
           .ci-venv/bin/python -m pytest -q tests/
-          for ENVIRONMENT in dev development prod; do
+          for ENVIRONMENT in dev development prod canary; do
             kubectl kustomize "chargeops-chatops/overlays/$ENVIRONMENT" > "artifacts/chargeops-$ENVIRONMENT.yaml"
             test -s "artifacts/chargeops-$ENVIRONMENT.yaml"
             sh scripts/validate-registry.sh "artifacts/chargeops-$ENVIRONMENT.yaml"

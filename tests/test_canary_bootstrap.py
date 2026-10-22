@@ -1,0 +1,100 @@
+import copy
+import json
+from pathlib import Path
+import types
+
+import pytest
+import yaml
+
+from test_canary import bootstrap, live
+
+
+@pytest.mark.parametrize('failure', [None, 'baseline', 'analysis'])
+def test_handover_never_scales_down_before_verified_baseline(tmp_path, monkeypatch, failure):
+    events = []
+    directory = tmp_path / bootstrap.PROD
+    directory.mkdir(parents=True)
+    (directory / 'kustomization.yaml').write_text(yaml.safe_dump({
+        'apiVersion': 'kustomize.config.k8s.io/v1beta1', 'kind': 'Kustomization', 'resources': []}))
+    image = 'registry.chargeops.lab:5000/chargeops/chargeops-csms@sha256:' + 'a' * 64
+    source = live()
+    source['spec']['replicas'] = 4
+    source['status'] = {'availableReplicas': 4}
+    frozen = copy.deepcopy(source)
+    frozen.update(apiVersion='apps/v1', kind='Deployment', metadata={'name': 'csms'})
+    frozen['spec']['template']['spec']['containers'][0]['image'] = image
+    additions = [{'apiVersion': 'argoproj.io/v1alpha1', 'kind': 'Rollout', 'metadata': {'name': 'csms'}}]
+    monkeypatch.setattr(bootstrap, 'ROOT', tmp_path)
+    monkeypatch.setattr(bootstrap, 'git_clean', lambda: None)
+    monkeypatch.setattr(bootstrap, 'render', lambda path: [frozen] + (additions if path == bootstrap.CANARY else []))
+    monkeypatch.setattr(bootstrap, 'install_controller', lambda: events.append('install'))
+    monkeypatch.setattr(bootstrap, 'create_kubeconfig', lambda duration: events.append('credential'))
+    monkeypatch.setattr(bootstrap, 'module', lambda name: types.SimpleNamespace(manifest=lambda ref: ('repository', 'a' * 64, {'sha256:' + 'a' * 64})))
+    monkeypatch.setattr(bootstrap, 'run', lambda *a, **kw: 'c' * 40 if a[:2] == ('git', 'rev-parse') else '')
+    def commit(message):
+        replica = yaml.safe_load((directory / bootstrap.RUNTIME).read_text())['spec']['replicas']
+        events.append(('commit', replica))
+        return 'c' * 40
+    monkeypatch.setattr(bootstrap, 'commit_runtime', commit)
+    def get(*args):
+        assert 'secret' not in args
+        if 'application' in args:
+            return {'spec': {'source': {'path': bootstrap.CANARY}}}
+        if 'deployment' in args:
+            actual = copy.deepcopy(source)
+            patch = directory / bootstrap.RUNTIME
+            if patch.exists(): actual['spec']['replicas'] = yaml.safe_load(patch.read_text())['spec']['replicas']
+            return actual
+        if 'pods' in args:
+            return {'items': [{'metadata': {'name': str(i)}, 'status': {'containerStatuses': [
+                {'name': 'csms', 'ready': True, 'imageID': image}]}} for i in range(4)]}
+        raise AssertionError('Unexpected API call')
+    monkeypatch.setattr(bootstrap, 'get', get)
+    monkeypatch.setattr(bootstrap, 'sync', lambda revision, resources: events.append(('sync', resources[0]['kind'])))
+    def baseline(ref):
+        events.append('baseline')
+        if failure == 'baseline': raise ValueError('not ready')
+    def analysis():
+        events.append('analysis')
+        if failure == 'analysis': raise ValueError('failed')
+    monkeypatch.setattr(bootstrap, 'wait_baseline', baseline)
+    monkeypatch.setattr(bootstrap, 'baseline_analysis', analysis)
+    if failure:
+        with pytest.raises(ValueError): bootstrap.bootstrap('24h')
+        assert yaml.safe_load((directory / bootstrap.RUNTIME).read_text())['spec']['replicas'] == 4
+        assert ('commit', 0) not in events
+    else:
+        bootstrap.bootstrap('24h')
+        assert events.index('baseline') < events.index('analysis') < events.index(('commit', 0))
+        assert yaml.safe_load((directory / bootstrap.RUNTIME).read_text())['spec']['replicas'] == 0
+
+
+def test_repeated_revision_still_waits_for_its_own_sync_operation(monkeypatch):
+    app = {'spec': {'source': {'path': bootstrap.CANARY}}}
+    operation = {}
+    calls = []
+    def run(*args, **kwargs):
+        operation.update(json.loads(args[-1])['operation'])
+    monkeypatch.setattr(bootstrap, 'run', run)
+    def get(*args):
+        calls.append(args)
+        if len(calls) == 1: return app
+        current = copy.deepcopy(app)
+        old = copy.deepcopy(operation)
+        if len(calls) == 2: old['initiatedBy']['username'] = 'previous-operation'
+        current['status'] = {'operationState': {'phase': 'Succeeded', 'operation': old}}
+        return current
+    monkeypatch.setattr(bootstrap, 'get', get)
+    monkeypatch.setattr(bootstrap.time, 'sleep', lambda seconds: None)
+    bootstrap.sync('c' * 40, [{'group': 'apps', 'kind': 'Deployment', 'name': 'csms'}])
+    assert len(calls) == 3
+
+
+def test_rehearsal_is_self_contained_and_python_commands_compile():
+    module = bootstrap.module('rehearse-canary')
+    docs = module.manifests()
+    assert all(d['metadata'].get('namespace', module.NS) == 'canary-rehearsal' for d in docs)
+    assert not any(d['kind'] in ['Secret', 'PersistentVolumeClaim', 'Application'] for d in docs)
+    compile(module.SERVER, '<rehearsal-server>', 'exec')
+    compile(module.PROBE, '<rehearsal-probe>', 'exec')
+    assert 'DB_DSN' not in json.dumps(docs)
