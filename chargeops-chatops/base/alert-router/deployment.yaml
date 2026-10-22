@@ -33,6 +33,12 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          env:
+            - name: CSMS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chatops-config
+                  key: CSMS_URL
           envFrom:
             - configMapRef:
                 name: chatops-config

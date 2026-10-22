@@ -6,18 +6,21 @@
 - `chargeops-chatops/argocd/application.yaml`의 `spec.destination.namespace: ops`
 - 문서의 namespace 생성, Secret 생성, 조회, rollout, port-forward 및 Job 실행 명령
 
-Overlay가 생성하는 리소스 19개는 모두 `ops`에 배포됩니다.
+Overlay가 생성하는 리소스 17개는 모두 `ops`에 배포됩니다.
 Argo CD Application과 ImageUpdater는 `argocd`에 유지합니다.
 이미지 경로의 `/chargeops/`, 앱·리소스·Secret 이름 및 DB 이름은 유지합니다.
 
 ## 기존 클러스터에서 전환할 때
+
+Secret별 키, 필수 여부와 생성 명령은 [Kubernetes Secret 준비 목록](kubernetes-secrets.md)을 참고합니다.
 
 namespace 변경은 기존 리소스의 이름 변경이나 데이터 이동을 수행하지 않습니다.
 기존 namespace를 사용 중이라면 자동 Sync 전에 다음 사항을 준비합니다.
 
 1. `ops` namespace에 앱 Secret과 외부 ConfigMap을 준비합니다.
    대상은 `chargeops-app-secrets`, `slack-credentials`, `bot-backend-credentials`,
-   `router-credentials`, `csms-credentials` Secret과 `chatops-config` ConfigMap입니다.
+   `router-credentials` Secret과 `chatops-config` ConfigMap입니다.
+   `chatops-config.CSMS_URL`은 기존 bot/router와 API가 호환되는 실제 CSMS 주소로 설정합니다.
    사용하는 서비스에 필요한 값이 있어야 하며 기존 namespace에서 자동 공유되지 않습니다.
    레지스트리는 익명 접근이므로 이미지 pull Secret은 필요하지 않습니다.
 2. 기존 Collector PVC에 데이터가 있다면 `ops/collector-v2-raw`로 사용할 스토리지와 데이터 이전을 별도로 준비합니다.
@@ -43,3 +46,5 @@ kubectl -n ops get deployment,pod,service,cronjob,pvc
 
 현재 작업은 저장소 설정 변경과 로컬 렌더링 검증까지입니다.
 클러스터 리소스 이동·삭제, Secret 생성, PVC 데이터 이전 및 실제 배포는 수행하지 않았습니다.
+저장소에서 제거한 리소스도 `prune: false` 설정으로 인해 클러스터에 남아 있을 수 있으므로,
+사용하지 않는 기존 Deployment·Service와 외부에서 생성한 전용 Secret은 운영환경에서 확인 후 정리합니다.

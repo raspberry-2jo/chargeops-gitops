@@ -29,13 +29,6 @@ spec:
           manifestTargets:
             kustomize:
               name: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
-        - alias: csms
-          imageName: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms:dev
-          commonUpdateSettings:
-            updateStrategy: digest
-          manifestTargets:
-            kustomize:
-              name: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms
         - alias: chargeops-ai-gateway
           imageName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway:dev
           commonUpdateSettings:

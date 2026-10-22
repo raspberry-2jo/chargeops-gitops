@@ -123,7 +123,7 @@ status와 info는 서로 다른 CronJob이므로 concurrencyPolicy로 둘 사이
 
 ## 로컬 검토 상태
 
-Overlay 렌더링은 성공했습니다: Deployment 8개, Service 6개, CronJob 3개, ConfigMap 1개, PVC 1개.
-Collector 세 CronJob은 중지 상태이고, 기존 세 이미지 digest는 보존했습니다.
+현재 Overlay는 Deployment 7개, Service 5개, CronJob 3개, ConfigMap 1개, PVC 1개를 렌더링합니다.
+이미지 8종을 추적하며 Collector 세 CronJob은 중지 상태입니다.
 실제 서버 Dry Run, Secret 생성, Argo CD 적용, Jenkins 빌드, 업무 API 검증은 수행하지 않았습니다.
 로컬 수정 파일 상태이며 커밋/Push는 아직 수행하지 않았습니다.

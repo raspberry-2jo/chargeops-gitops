@@ -6,17 +6,17 @@ Jenkins GitOps 검증 Job은 Linux agent label `mgmt-agent`를 사용합니다.
 
 ## 변경 내용
 
-- Base Deployment 8개 및 Collector CronJob 3개의 이미지 주소를 변경했습니다.
-  기존 `initial` 태그 3개도 Image Updater가 추적하는 `dev`로 통일했습니다.
-- Overlay의 이미지 9종 `name`/`newName`과 ImageUpdater의 `imageName`/Kustomize 대상 이름을
+- 현재 Base Deployment 7개 및 Collector CronJob 3개의 이미지 주소를 관리합니다.
+  이미지 태그는 Image Updater가 추적하는 `dev`로 통일했습니다.
+- Overlay의 이미지 8종 `name`/`newName`과 ImageUpdater의 `imageName`/Kustomize 대상 이름을
   Base와 동일하게 변경했습니다. 기존 Git write-back과 digest 전략을 유지합니다.
-- 이전 레지스트리의 digest 9개는 새 저장소에 존재하는지 확인할 수 없어 제거했습니다.
+- 이전 레지스트리의 digest는 새 저장소에 존재하는지 확인할 수 없어 제거했습니다.
   최초에는 `:dev`를 사용하고 Image Updater가 새 레지스트리의 digest를 Git에 기록합니다.
 - Pod의 `imagePullPolicy`를 `Always`로 변경해 digest 고정 전 재시작 시 `dev` 캐시 재사용을 방지합니다.
   이미 digest로 고정된 경우 같은 콘텐츠를 사용합니다. 같은 태그의 Push만으로 Pod가 재시작되지는 않으므로
   이후 자동 배포에는 Image Updater의 digest write-back이 정상 동작해야 합니다.
-- 현재 레지스트리는 아이디·비밀번호 인증 없이 사용합니다. Deployment 8개와 Collector CronJob 3개의
-  `imagePullSecrets`, ImageUpdater 이미지 9종의 `pullSecret` 참조를 모두 제거했습니다.
+- 현재 레지스트리는 아이디·비밀번호 인증 없이 사용합니다. Deployment 7개와 Collector CronJob 3개의
+  `imagePullSecrets`, ImageUpdater 이미지 8종의 `pullSecret` 참조를 모두 제거했습니다.
   레지스트리 로그인 Secret을 생성할 필요가 없습니다.
 - GitOps CI가 렌더링한 모든 컨테이너 이미지의 레지스트리/태그를 검사하도록 추가했습니다.
   `.gitattributes`로 shell script의 LF 개행을 고정해 Windows에서 작업 후에도 Linux agent에서 실행되도록 했습니다.
@@ -30,7 +30,6 @@ Jenkins GitOps 검증 Job은 Linux agent label `mgmt-agent`를 사용합니다.
 |---|---|
 | chargeops-chatops-bot | Deployment/chatops-bot |
 | chargeops-alert-router | Deployment/alert-router |
-| chargeops-mock-csms | Deployment/mock-csms |
 | chargeops-ai-gateway | Deployment/ai-gateway |
 | chargeops-v2-chatops-bot | Deployment/chatops-bot-v2 |
 | chargeops-v2-csms | Deployment/csms-v2 |
@@ -107,7 +106,7 @@ Pod image에는 `http://` 또는 `https://`를 붙이지 않습니다.
 
 ## 검증 및 전환 순서
 
-1. 위 DNS/프로토콜 설정과 익명 접근을 확인하고 이미지 9종을 새 레지스트리에 Push합니다.
+1. 위 DNS/프로토콜 설정과 익명 접근을 확인하고 이미지 8종을 새 레지스트리에 Push합니다.
    클러스터의 Image Updater와 노드에서도 registry 접근을 확인합니다.
 2. 전환 중 기존 Image Updater가 Overlay에 이전 주소를 다시 쓰지 않도록 해당 Application의 이미지 업데이트를 일시 조정합니다.
 3. 관리 VM에서 아래 검증을 수행한 뒤 Git 변경을 반영하고 새 ImageUpdater 설정을 적용합니다.

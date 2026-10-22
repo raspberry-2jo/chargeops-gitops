@@ -6,7 +6,6 @@ namespace: ops
 resources:
   - ../../base/chatops-bot
   - ../../base/alert-router
-  - ../../base/mock-csms
   
   - ../../base/ai-gateway
   - ../../base/chatops-bot-v2
@@ -22,9 +21,6 @@ images:
   - name: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
     newTag: dev
     newName: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
-  - name: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms
-    newTag: dev
-    newName: registry.chargeops.lab:5000/chargeops/chargeops-mock-csms
   - name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
     newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
     newTag: dev

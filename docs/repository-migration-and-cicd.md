@@ -29,7 +29,7 @@ Kubernetes namespace, Application 이름, Service 이름, Secret 참조 이름�
 
 애플리케이션: `https://github.com/chanjook1m/chargeops.git`의 기존 Jenkinsfile이 테스트와 이미지 빌드/Push를 담당합니다.
 이 저장소에는 Dockerfile과 앱 소스가 없으므로 애플리케이션 빌드 Job은 별도 변경이 필요합니다.
-이미지 9종을 `registry.chargeops.lab:5000/chargeops/<이미지명>:dev`로 Push하도록 빌드/태그/Push,
+이미지 8종을 `registry.chargeops.lab:5000/chargeops/<이미지명>:dev`로 Push하도록 빌드/태그/Push,
 현재 레지스트리는 인증 없이 사용하므로 Docker login과 레지스트리용 Jenkins credential은 필요 없습니다.
 앱 빌드 Job의 agent label도 `mgmt-agent`로 맞춥니다. Git 접근 및 kubeconfig credential은 별개입니다.
 기존 빌드 설정을 이 저장소에서 수정하거나 실제 Push를 검증한 것은 아닙니다.

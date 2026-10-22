@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: chatops-bot
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -27,6 +27,12 @@ spec:
             - python
             - -m
             - app.bot
+          env:
+            - name: CSMS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chatops-config
+                  key: CSMS_URL
           envFrom:
             - configMapRef:
                 name: chatops-config

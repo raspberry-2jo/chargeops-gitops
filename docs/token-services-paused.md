@@ -1,15 +1,22 @@
 # 토큰 및 필수 Secret을 사용하는 서비스 임시 중지
 
-토큰 준비 전 실행을 보류하기 위해 아래 Deployment 6개를 한때 `replicas: 0`으로 변경했습니다.
-이후 사용자 요청으로 `mock-csms`, `chatops-bot`, `alert-router`는 `replicas: 1`로 복원했습니다.
+토큰 준비 전 실행을 보류했던 서비스 중 `chatops-bot`과 `alert-router`는 실행 설정으로 복원했습니다.
 현재 중지 대상은 `chatops-bot-v2`, `notifier-v2`, `csms-v2` 3개입니다.
 변경 위치는 모두 `chargeops-chatops/base/<서비스>/deployment.yaml`입니다.
+
+현재 `chatops-bot`은 Socket Mode 수신 프로세스를 하나만 운영하도록 `replicas: 1`로 설정합니다.
+업데이트 전략은 기존 `Recreate`를 유지합니다. 운영환경에서 수동 scale 대신 GitOps 설정으로 반영합니다.
+Argo CD Sync 후 다음 명령의 출력이 `1 / Recreate`인지 확인합니다.
+
+```bash
+kubectl -n ops get deploy chatops-bot \
+  -o jsonpath='{.spec.replicas}{" / "}{.spec.strategy.type}{"\n"}'
+```
 
 | 서비스 | 사용하는 토큰 / 필수 Secret |
 |---|---|
 | chatops-bot | SLACK_BOT_TOKEN, SLACK_APP_TOKEN, INTERNAL_TOKEN / slack-credentials, bot-backend-credentials |
 | alert-router | SLACK_BOT_TOKEN, INTERNAL_TOKEN, TRIGGER_KEY / router-credentials |
-| mock-csms | INTERNAL_TOKEN / csms-credentials |
 | chatops-bot-v2 | SLACK_BOT_TOKEN, SLACK_APP_TOKEN, CSMS_API_TOKEN, JENKINS_TOKEN / chargeops-app-secrets |
 | notifier-v2 | SLACK_BOT_TOKEN, CSMS_API_TOKEN / chargeops-app-secrets |
 | csms-v2 | API_TOKEN 및 필수 DB_DSN / chargeops-app-secrets |
@@ -28,7 +35,7 @@ vcharger-v2는 중지된 csms-v2에 연결할 수 없어 OCPP 업무 흐름은 �
 
 최초 중지 변경은 커밋 `a907d18`로 main에 Push했습니다. 이번 복원 변경도 main에 커밋·Push합니다.
 클러스터에서 직접 적용하거나 실행 상태를 확인하지는 않았습니다.
-Argo CD 자동 Sync 후 복원한 세 Deployment의 Pod가 실행되며, 해당 서비스의 Secret과 ConfigMap이 필요합니다.
+Argo CD 자동 Sync 후 복원한 Deployment의 Pod가 실행되며, 해당 서비스의 Secret과 ConfigMap이 필요합니다.
 base의 replicas 변경이므로 해당 base를 사용하는 다른 overlay에도 적용됩니다.
 
 Secret 및 외부 서비스 준비 후 실행할 Deployment의 replicas를 1로 되돌리고 GitOps로 반영합니다.
