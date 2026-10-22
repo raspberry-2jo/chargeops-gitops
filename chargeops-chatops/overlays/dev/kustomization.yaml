@@ -15,7 +15,7 @@ images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
   newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
   newTag: dev
-  digest: sha256:a720d070b3cdbcd0262c51d1ab42a406b2e9114de0185a0971fa7123913b93ca
+  digest: sha256:8137664a6dda4cbb20065c839d98f80832d0fb5a5feaeb7dd2bc5e40127757ba
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newTag: dev
