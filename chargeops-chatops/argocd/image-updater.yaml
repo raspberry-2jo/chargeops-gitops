@@ -50,11 +50,3 @@ spec:
       manifestTargets:
         kustomize:
           name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
-    - alias: collector
-      imageName: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
-      commonUpdateSettings:
-        updateStrategy: digest
-        forceUpdate: true
-      manifestTargets:
-        kustomize:
-          name: registry.chargeops.lab:5000/chargeops/chargeops-collector

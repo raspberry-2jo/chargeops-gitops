@@ -1,166 +1,186 @@
+# 공공 API 수집기 - 10/15 서버에 올려 동작하던 k8s/collector.yaml 과 같은 값 (2026-10-22 DB팀)
+# 이미지 collector:0.2, Secret collector-secret(기존), CA 볼륨 chargeops-ca(기존)
+# suspend: status · info 는 false (실제 운영 값), check 는 true (손으로만 create job)
+# securityContext 는 넣지 않음: 원래 정의에 없었고, PVC(/data) 기존 파일 소유자와 맞지 않을 수 있음
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: collector-status
   labels:
+    app: collector
     app.kubernetes.io/name: collector
 spec:
   schedule: '*/5 * * * *'
   timeZone: Asia/Seoul
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 5
   jobTemplate:
     spec:
       backoffLimit: 0
       activeDeadlineSeconds: 240
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
+            app: collector
+            mode: status
             app.kubernetes.io/name: collector
-            app.kubernetes.io/mode: status
         spec:
-          automountServiceAccountToken: false
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
-            fsGroup: 10001
           restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: k8s-w02
           containers:
-            - name: collector
-              image: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
-              imagePullPolicy: Always
-              args:
-                - status
-              envFrom:
-                - configMapRef:
-                    name: collector-config
-                - secretRef:
-                    name: chargeops-app-secrets
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 128Mi
-                limits:
-                  memory: 512Mi
-              volumeMounts:
-                - name: raw
-                  mountPath: /data
-          volumes:
+          - name: collector
+            image: registry.chargeops.lab:5000/chargeops/collector:0.2
+            imagePullPolicy: IfNotPresent
+            args:
+            - status
+            envFrom:
+            - configMapRef:
+                name: collector-config
+            - secretRef:
+                name: collector-secret
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+            volumeMounts:
             - name: raw
-              persistentVolumeClaim:
-                claimName: collector-raw
-  startingDeadlineSeconds: 120
+              mountPath: /data
+            - name: ca
+              mountPath: /etc/chargeops-ca
+              readOnly: true
+          volumes:
+          - name: raw
+            persistentVolumeClaim:
+              claimName: collector-raw
+          - name: ca
+            configMap:
+              name: chargeops-ca
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: collector-info
   labels:
+    app: collector
     app.kubernetes.io/name: collector
 spec:
   schedule: 10 3 * * *
   timeZone: Asia/Seoul
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 5
   jobTemplate:
     spec:
       backoffLimit: 0
       activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
+            app: collector
+            mode: info
             app.kubernetes.io/name: collector
-            app.kubernetes.io/mode: info
         spec:
-          automountServiceAccountToken: false
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
-            fsGroup: 10001
           restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: k8s-w02
           containers:
-            - name: collector
-              image: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
-              imagePullPolicy: Always
-              args:
-                - info
-              envFrom:
-                - configMapRef:
-                    name: collector-config
-                - secretRef:
-                    name: chargeops-app-secrets
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 128Mi
-                limits:
-                  memory: 512Mi
-              volumeMounts:
-                - name: raw
-                  mountPath: /data
-          volumes:
+          - name: collector
+            image: registry.chargeops.lab:5000/chargeops/collector:0.2
+            imagePullPolicy: IfNotPresent
+            args:
+            - info
+            envFrom:
+            - configMapRef:
+                name: collector-config
+            - secretRef:
+                name: collector-secret
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+            volumeMounts:
             - name: raw
-              persistentVolumeClaim:
-                claimName: collector-raw
-  startingDeadlineSeconds: 120
+              mountPath: /data
+            - name: ca
+              mountPath: /etc/chargeops-ca
+              readOnly: true
+          volumes:
+          - name: raw
+            persistentVolumeClaim:
+              claimName: collector-raw
+          - name: ca
+            configMap:
+              name: chargeops-ca
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: collector-check
   labels:
+    app: collector
     app.kubernetes.io/name: collector
 spec:
   schedule: 0 0 1 1 *
   timeZone: Asia/Seoul
   suspend: true
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
   jobTemplate:
     spec:
       backoffLimit: 0
       activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
+            app: collector
+            mode: check
             app.kubernetes.io/name: collector
-            app.kubernetes.io/mode: check
         spec:
-          automountServiceAccountToken: false
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
-            fsGroup: 10001
           restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: k8s-w02
           containers:
-            - name: collector
-              image: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
-              imagePullPolicy: Always
-              args:
-                - check
-              envFrom:
-                - configMapRef:
-                    name: collector-config
-                - secretRef:
-                    name: chargeops-app-secrets
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 128Mi
-                limits:
-                  memory: 512Mi
-              volumeMounts:
-                - name: raw
-                  mountPath: /data
-          volumes:
+          - name: collector
+            image: registry.chargeops.lab:5000/chargeops/collector:0.2
+            imagePullPolicy: IfNotPresent
+            args:
+            - check
+            envFrom:
+            - configMapRef:
+                name: collector-config
+            - secretRef:
+                name: collector-secret
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+            volumeMounts:
             - name: raw
-              persistentVolumeClaim:
-                claimName: collector-raw
+              mountPath: /data
+            - name: ca
+              mountPath: /etc/chargeops-ca
+              readOnly: true
+          volumes:
+          - name: raw
+            persistentVolumeClaim:
+              claimName: collector-raw
+          - name: ca
+            configMap:
+              name: chargeops-ca

@@ -3,12 +3,14 @@ kind: ConfigMap
 metadata:
   name: collector-config
 data:
-  PGHOST: 10.10.30.11,10.10.30.12
+  PGHOST: 10.10.30.11,10.10.30.12        # db-01 · db-02 PgBouncer (쓰기 되는 쪽만 고름)
   PGPORT: '6432'
   PGTARGETSESSIONATTRS: read-write
   PGDATABASE: chargeops
   PGUSER: app_writer
   PGCONNECT_TIMEOUT: '3'
   RAW_DIR: /data
-  EV_ZCODE: '50'
-  S3_BUCKET: ''
+  EV_ZCODE: '50'                         # 제주
+  S3_BUCKET: chargeops-raw               # 원본을 MinIO 로. 비우면 PVC(/data)에만 저장
+  S3_ENDPOINT_URL: https://10.10.40.30   # MinIO (mgmt .30:443)
+  AWS_CA_BUNDLE: /etc/chargeops-ca/ca.crt  # 사설 CA 로 MinIO 인증서 검증 (CronJob 의 ca 볼륨)

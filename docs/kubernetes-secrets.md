@@ -1,7 +1,7 @@
 # Kubernetes Secret 준비 목록
 
-현재 렌더링되는 GitOps 매니페스트 기준으로 직접 참조하는 Secret은 총 3개입니다.
-앱용 2개는 `ops`, Image Updater Git write-back용 1개는 `argocd`에서 준비합니다.
+현재 렌더링되는 GitOps 매니페스트 기준으로 직접 참조하는 Secret은 총 4개입니다.
+앱용 3개는 `ops`, Image Updater Git write-back용 1개는 `argocd`에서 준비합니다.
 이 저장소는 Secret 생성 매니페스트나 실제 값을 포함하지 않습니다.
 실제 클러스터의 생성 여부와 값은 확인하지 않았습니다.
 
@@ -10,7 +10,8 @@
 | Secret 이름 | 준비할 키 | 사용 리소스 |
 |---|---|---|
 | `chargeops-secrets` | `DB_DSN`, `CSMS_API_TOKEN`, Slack 토큰·채널 등 아래 앱별 키 | csms, chatops-bot, notifier |
-| `chargeops-app-secrets` | 아래 공통 키 목록 중 각 앱이 사용하는 키 | ai-gateway, Collector CronJob 3개 |
+| `chargeops-app-secrets` | `DB_DSN` (optional 참조) | ai-gateway |
+| `collector-secret` | DB팀 운영 이미지가 사용하는 기존 공공 API·DB·S3 인증 키 | Collector CronJob 3개 |
 
 CSMS는 사용자가 존재와 키 목록을 확인한 기존 `ops/chargeops-secrets`를 사용한다.
 `DB_DSN`은 같은 이름의 환경변수로, `CSMS_API_TOKEN`은 CSMS가 읽는 `API_TOKEN` 환경변수로 주입한다.
@@ -45,12 +46,12 @@ bot의 역할·승인 정책은 DB의 `ops_role` 등을 사용하므로 DB_DSN�
 앱 저장소 루트 `apps/`의 bot/notifier/AI gateway 소스와 기존 문서를 함께 확인했습니다.
 Registry에 올라간 실제 이미지 내용과 클러스터의 Secret 값은 확인하지 않았습니다.
 S3 업로드를 켜는 경우 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` 및 필요 시 `AWS_SESSION_TOKEN` 등
-해당 실행 환경의 인증 방식에 맞는 추가 설정이 필요합니다. 현재 Collector의 `S3_BUCKET`은 비어 있습니다.
+해당 실행 환경의 인증 방식에 맞는 추가 설정이 필요합니다. 현재 Collector는 `S3_BUCKET=chargeops-raw`로 S3 업로드를 사용하므로 운영 이미지가 요구하는 인증 키를 기존 `collector-secret`에서 준비합니다.
 
 ### 필수 여부와 현재 실행 상태
 
 - `chatops-bot`, `csms`, `notifier`는 replicas 2이며 `chargeops-secrets`를 사용합니다. CSMS는 위 두 키, bot은 `DB_DSN`·`SLACK_BOT_TOKEN`·`SLACK_APP_TOKEN`, notifier는 `DB_DSN`·`SLACK_BOT_TOKEN`·`SLACK_ALERT_CHANNEL` 등이 필요합니다. bot의 Recreate 전략은 유지합니다.
-- Collector CronJob 3개는 `suspend: true`이며, 실행 또는 수동 Job 생성 전에 API/DB 키를 준비합니다.
+- Collector는 `collector-secret`을 사용합니다. status/info는 `suspend: false`, check는 `suspend: true`입니다. 기존 Secret의 실제 키·값과 이미지에서 요구하는 키의 일치 여부는 관리 서버에서 확인합니다.
 - `ai-gateway`의 `DB_DSN` 참조만 `optional: true`입니다. Secret/키 없이 Pod를 시작할 수 있게 한 설정이며
   DB를 사용하는 업무 기능에 실제 연결이 필요하다는 기존 문서 조건은 별개입니다.
 - `envFrom.secretRef`는 키별 목록을 선언하지 않습니다. Secret이 있어도 앱이 읽는 키가 빠지면 앱 실행·기능이 실패할 수 있습니다.

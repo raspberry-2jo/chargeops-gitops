@@ -25,10 +25,6 @@ images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
   newName: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
   newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-collector
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-collector
-  newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector
-  newTag: dev
-  digest: sha256:90e9e453126f6545b791191afe4cd0d0cbc44a534a8744720310ae3efd932c27
+- name: registry.chargeops.lab:5000/chargeops/collector
+  newName: registry.chargeops.lab:5000/chargeops/collector
+  newTag: '0.2'
