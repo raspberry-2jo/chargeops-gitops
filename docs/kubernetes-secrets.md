@@ -1,7 +1,7 @@
 # Kubernetes Secret 준비 목록
 
-현재 렌더링되는 GitOps 매니페스트 기준으로 직접 참조하는 Secret은 총 2개입니다.
-앱용 1개는 `ops`, Image Updater Git write-back용 1개는 `argocd`에 생성합니다.
+현재 GitOps 매니페스트 기준으로 직접 참조하는 Secret은 총 5개입니다.
+앱용 4개는 `ops`, Image Updater Git write-back용 1개는 `argocd`에 생성합니다.
 이 저장소는 Secret 생성 매니페스트나 실제 값을 포함하지 않습니다.
 실제 클러스터의 생성 여부와 값은 확인하지 않았습니다.
 
@@ -9,24 +9,27 @@
 
 | Secret 이름 | 준비할 키 | 사용 리소스 |
 |---|---|---|
-| `chargeops-app-secrets` | 아래 공통 키 목록 | ai-gateway, chatops-bot, csms, notifier, Collector CronJob 3개 |
+| `slack-credentials` | `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` | Deployment/chatops-bot |
+| `bot-backend-credentials` | `INTERNAL_TOKEN`, `ALLOWED_APPROVER_IDS`; 기존 생성 스크립트 호환 키 `TRIGGER_KEY` | Deployment/chatops-bot |
+| `router-credentials` | `SLACK_BOT_TOKEN`, `INTERNAL_TOKEN`, `TRIGGER_KEY` | Deployment/alert-router |
+| `chargeops-app-secrets` | 아래 공통 키 목록 | ai-gateway, chatops-bot-v2, csms-v2, notifier-v2, Collector CronJob 3개 |
 
-bot은 우선 적용한 원본처럼 `chargeops-app-secrets`만 주입합니다.
-bot의 역할·승인 정책은 DB의 `ops_role` 등을 사용하므로 DB_DSN도 준비해야 합니다.
-이전 slack-credentials·bot-backend-credentials와 제외된 router용 Secret은 현재 렌더링되는 앱의 필수 목록에서 제외했습니다. 클러스터에 있는 Secret 자체를 삭제하지는 않았습니다.
+기존 bot/router는 `envFrom.secretRef`로 Secret 전체를 주입하며 Secret 존재가 필수입니다.
+`ALLOWED_APPROVER_IDS`는 쉼표로 구분한 Slack 사용자 ID 목록입니다. 비어 있으면 승인 기능이 거부됩니다.
+`bot-backend-credentials.TRIGGER_KEY`는 로컬 기존 생성 스크립트에 포함되지만 확인한 bot 런타임 코드에서는 읽지 않습니다.
 
 ### chargeops-app-secrets 공통 키
 
 | 키 | 용도 / 값 준비 |
 |---|---|
-| `DB_DSN` | CSMS·bot·notifier·AI gateway의 PostgreSQL/PgBouncer 접속 문자열. DB 주소·포트·DB명·사용자·비밀번호 포함 |
-| `API_TOKEN` | CSMS가 받는 내부 API 인증 토큰 |
-| `CSMS_API_TOKEN` | bot/notifier가 CSMS에 보내는 토큰. 인증을 켜면 `API_TOKEN`과 동일 값 |
+| `DB_DSN` | CSMS v2 및 AI gateway의 PostgreSQL/PgBouncer 접속 문자열. DB 주소·포트·DB명·사용자·비밀번호 포함 |
+| `API_TOKEN` | CSMS v2가 받는 내부 API 인증 토큰 |
+| `CSMS_API_TOKEN` | v2 bot/notifier가 CSMS에 보내는 토큰. 인증을 켜면 `API_TOKEN`과 동일 값 |
 | `SLACK_BOT_TOKEN` | Slack Bot OAuth 토큰 (`xoxb-...`) |
 | `SLACK_APP_TOKEN` | Slack Socket Mode App 토큰 (`xapp-...`) |
-| `SLACK_ALERT_CHANNEL` | 알림 대상 Slack 채널 ID |
-| `SLACK_AUDIT_CHANNEL` | 감사 알림 대상 Slack 채널 ID |
-| `JENKINS_USER` | bot에서 Jenkins API를 호출하는 사용자 |
+| `SLACK_ALERT_CHANNEL` | v2 알림 대상 Slack 채널 ID |
+| `SLACK_AUDIT_CHANNEL` | v2 감사 알림 대상 Slack 채널 ID |
+| `JENKINS_USER` | v2 bot에서 Jenkins API를 호출하는 사용자 |
 | `JENKINS_TOKEN` | 해당 사용자의 Jenkins API 토큰 |
 | `EV_SERVICE_KEY` | Collector 공공데이터 API 인증키 |
 | `PGPASSWORD` | Collector DB 접속 비밀번호. 기존 ConfigMap의 `PGUSER: app_writer` 계정과 일치 |
@@ -34,14 +37,15 @@ bot의 역할·승인 정책은 DB의 `ops_role` 등을 사용하므로 DB_DSN�
 공통 키 목록은 기존 GitOps 실행 문서의 준비 목록입니다.
 로컬 CSMS 소스에서 `DB_DSN` 필수 및 `API_TOKEN` 선택 사용을 확인했으며,
 로컬 Collector 소스에서 `EV_SERVICE_KEY`(또는 `PUBLIC_API_KEY`), `PGPASSWORD`(또는 `DB_PASSWORD`) 지원을 확인했습니다.
-앱 저장소 루트 `apps/`의 bot/notifier/AI gateway 소스와 기존 문서를 함께 확인했습니다.
-Registry에 올라간 실제 이미지 내용과 클러스터의 Secret 값은 확인하지 않았습니다.
+v2 bot/notifier/AI gateway 전체 소스는 확인 가능한 로컬 경로에 없어,
+이 세 앱의 기능별 필수 키는 기존 문서 기준이며 실제 배포 이미지와의 일치까지 확인한 것은 아닙니다.
 S3 업로드를 켜는 경우 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` 및 필요 시 `AWS_SESSION_TOKEN` 등
 해당 실행 환경의 인증 방식에 맞는 추가 설정이 필요합니다. 현재 Collector의 `S3_BUCKET`은 비어 있습니다.
 
 ### 필수 여부와 현재 실행 상태
 
-- `chatops-bot`, `csms`, `notifier`는 replicas 0이며, 재개 전에 `chargeops-app-secrets`를 준비합니다. bot의 Recreate 전략은 유지합니다.
+- `chatops-bot`은 replicas 1 및 Recreate, `alert-router`는 replicas 2로 실행하도록 설정되어 있으므로 해당 Secret 3개를 먼저 준비합니다.
+- `chatops-bot-v2`, `csms-v2`, `notifier-v2`는 replicas 0이며, 재개 전에 `chargeops-app-secrets`를 준비합니다.
 - Collector CronJob 3개는 `suspend: true`이며, 실행 또는 수동 Job 생성 전에 API/DB 키를 준비합니다.
 - `ai-gateway`의 `DB_DSN` 참조만 `optional: true`입니다. Secret/키 없이 Pod를 시작할 수 있게 한 설정이며
   DB를 사용하는 업무 기능에 실제 연결이 필요하다는 기존 문서 조건은 별개입니다.
@@ -71,7 +75,7 @@ branch protection 등 저장소 정책이 직접 Push를 허용하는지도 확�
 - `ALLOWED_APPROVER_IDS`: bot-backend의 승인자 목록을 실제 운영 정책에 맞춥니다.
 - 기존 bot과 router가 같은 Slack 앱을 쓰면 두 Secret의 `SLACK_BOT_TOKEN`을 동일하게 맞춥니다.
 - `TRIGGER_KEY`: router Secret과 알림을 발생시키는 호출자가 같은 값을 사용합니다.
-- `API_TOKEN`과 `CSMS_API_TOKEN`: CSMS  인증을 사용할 경우 동일하게 맞춥니다.
+- `API_TOKEN`과 `CSMS_API_TOKEN`: CSMS v2 인증을 사용할 경우 동일하게 맞춥니다.
 - `DB_DSN`과 `PGPASSWORD`: 각각 실제 접속 계정의 비밀번호와 맞춥니다. 두 앱이 같은 DB 계정을 쓰는 경우 그 계정 기준으로 일치시킵니다.
 
 ## 생성 및 조회 예시
@@ -84,7 +88,7 @@ branch protection 등 저장소 정책이 직접 Push를 허용하는지도 확�
 set -euo pipefail
 kubectl create namespace ops --dry-run=client -o yaml | kubectl apply -f -
 # ~/.chargeops-secrets 디렉터리 권한 700, 개별 파일 권한 600으로 사전 준비
-for name in chargeops-app-secrets; do
+for name in slack-credentials bot-backend-credentials router-credentials chargeops-app-secrets; do
   kubectl -n ops create secret generic "$name" \
     --from-env-file="$HOME/.chargeops-secrets/$name.env" \
     --dry-run=client -o yaml | kubectl apply -f -
@@ -95,7 +99,7 @@ kubectl -n argocd create secret generic chargeops-git-write \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # 값 출력 없이 리소스 존재 확인
-kubectl -n ops get secret chargeops-app-secrets
+kubectl -n ops get secret slack-credentials bot-backend-credentials router-credentials chargeops-app-secrets
 kubectl -n argocd get secret chargeops-git-write
 ```
 
@@ -105,17 +109,19 @@ Secret 값을 환경변수로 주입한 기존 Pod에는 갱신 값이 자동 �
 
 ## Secret이 아닌 추가 준비물
 
-- `ops/chatops-config` ConfigMap은 통합한 bot이 더 이상 참조하지 않습니다. 기존 클러스터의 ConfigMap 자체는 삭제하지 않았습니다.
-  bot의 CSMS_URL·AI_URL·JENKINS_URL은 Deployment에 명시합니다.
-  bot은 새 이미지의 `chatops_bot.app`으로 실행하고 CSMS의 복구 API를 사용합니다.
-- `ops/collector-config` ConfigMap은 이 저장소가 배포하며 `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` 등을 담습니다.
+- `ops/chatops-config` ConfigMap: 기존 bot/router가 참조하지만 이 저장소가 생성하지 않습니다.
+  운영환경에서 직접 생성합니다. 준비할 키는 `SLACK_CHANNEL_ID`, `SLACK_TEAM_ID`, `CSMS_URL`입니다.
+  두 Deployment가 `CSMS_URL`을 필수 키로 읽으므로 실제 연동 대상 URL을 지정해야 합니다.
+  기존 앱의 incident 생성·조회·승인 API와 인증 방식을 지원하는 백엔드가 필요합니다.
+  `csms-v2`는 API가 달라 단순히 주소만 바꾸는 것으로 호환되지 않습니다.
+- `ops/collector-v2-config` ConfigMap은 이 저장소가 배포하며 `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` 등을 담습니다.
 - Docker Registry는 인증 없이 사용하므로 `harbor-pull` 또는 다른 image pull Secret은 필요 없습니다.
 - Jenkins의 SCM credential과 선택적 `KUBECONFIG_CREDENTIAL_ID`는 Jenkins에 등록하는 credential이며 앱용 Kubernetes Secret이 아닙니다.
 
 ## 조사 근거
 
 - 이 저장소의 Deployment/CronJob의 `secretRef`/`secretKeyRef`와 ImageUpdater의 write-back 설정 전체
-- `docs/chargeops-gitops.md`, `docs/token-services-paused.md`
+- `docs/chargeops-v2-gitops.md`, `docs/token-services-paused.md`
 - `C:/ChargeOps/chargeops/app/bot.py`, `app/router.py`
 - `C:/ChargeOps/work/chargeops/apps/csms/app.py`, `apps/collector/collector_v1.py`
 

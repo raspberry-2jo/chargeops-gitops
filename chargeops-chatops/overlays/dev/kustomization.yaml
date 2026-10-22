@@ -1,29 +1,41 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
 namespace: ops
+
 resources:
-- ../../base/chatops-bot
-- ../../base/ai-gateway
-- ../../base/csms
-- ../../base/notifier
-- ../../base/vcharger
-- ../../base/collector
+  - ../../base/chatops-bot
+  - ../../base/alert-router
+  
+  - ../../base/ai-gateway
+  - ../../base/chatops-bot-v2
+  - ../../base/csms-v2
+  - ../../base/notifier-v2
+  - ../../base/vcharger-v2
+  - ../../base/collector-v2
+
 images:
-- name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
-  newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
-  newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-notifier
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-notifier
-  newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
-  newTag: dev
-- name: registry.chargeops.lab:5000/chargeops/chargeops-collector
-  newName: registry.chargeops.lab:5000/chargeops/chargeops-collector
-  newTag: dev
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
+    newTag: dev
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
+    newTag: dev
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-alert-router
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
+    newTag: dev
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-chatops-bot
+    newTag: dev
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-csms
+    newTag: dev
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-notifier
+    newTag: dev
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-vcharger
+    newTag: dev
+  - name: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector
+    newName: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector
+    newTag: dev

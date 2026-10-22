@@ -1,9 +1,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: collector-status
+  name: collector-v2-status
   labels:
-    app.kubernetes.io/name: collector
+    app.kubernetes.io/name: collector-v2
 spec:
   schedule: '*/5 * * * *'
   timeZone: Asia/Seoul
@@ -18,7 +18,7 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: collector
+            app.kubernetes.io/name: collector-v2
             app.kubernetes.io/mode: status
         spec:
           automountServiceAccountToken: false
@@ -30,13 +30,13 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
+              image: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
               imagePullPolicy: Always
               args:
                 - status
               envFrom:
                 - configMapRef:
-                    name: collector-config
+                    name: collector-v2-config
                 - secretRef:
                     name: chargeops-app-secrets
               resources:
@@ -51,15 +51,15 @@ spec:
           volumes:
             - name: raw
               persistentVolumeClaim:
-                claimName: collector-raw
+                claimName: collector-v2-raw
   startingDeadlineSeconds: 120
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: collector-info
+  name: collector-v2-info
   labels:
-    app.kubernetes.io/name: collector
+    app.kubernetes.io/name: collector-v2
 spec:
   schedule: 10 3 * * *
   timeZone: Asia/Seoul
@@ -74,7 +74,7 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: collector
+            app.kubernetes.io/name: collector-v2
             app.kubernetes.io/mode: info
         spec:
           automountServiceAccountToken: false
@@ -86,13 +86,13 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
+              image: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
               imagePullPolicy: Always
               args:
                 - info
               envFrom:
                 - configMapRef:
-                    name: collector-config
+                    name: collector-v2-config
                 - secretRef:
                     name: chargeops-app-secrets
               resources:
@@ -107,15 +107,15 @@ spec:
           volumes:
             - name: raw
               persistentVolumeClaim:
-                claimName: collector-raw
+                claimName: collector-v2-raw
   startingDeadlineSeconds: 120
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: collector-check
+  name: collector-v2-check
   labels:
-    app.kubernetes.io/name: collector
+    app.kubernetes.io/name: collector-v2
 spec:
   schedule: 0 0 1 1 *
   timeZone: Asia/Seoul
@@ -130,7 +130,7 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: collector
+            app.kubernetes.io/name: collector-v2
             app.kubernetes.io/mode: check
         spec:
           automountServiceAccountToken: false
@@ -142,13 +142,13 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: registry.chargeops.lab:5000/chargeops/chargeops-collector:dev
+              image: registry.chargeops.lab:5000/chargeops/chargeops-v2-collector:dev
               imagePullPolicy: Always
               args:
                 - check
               envFrom:
                 - configMapRef:
-                    name: collector-config
+                    name: collector-v2-config
                 - secretRef:
                     name: chargeops-app-secrets
               resources:
@@ -163,4 +163,4 @@ spec:
           volumes:
             - name: raw
               persistentVolumeClaim:
-                claimName: collector-raw
+                claimName: collector-v2-raw

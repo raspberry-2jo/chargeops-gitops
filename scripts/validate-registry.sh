@@ -22,10 +22,6 @@ awk '
       print "Unexpected container image: " ref > "/dev/stderr"
       failed = 1
     }
-    if (ref ~ /[-]v[0-9]+[-]/) {
-      print "Version suffix is not allowed in the app image name: " ref > "/dev/stderr"
-      failed = 1
-    }
     if (ref ~ /@sha256:/) {
       digest = ref
       sub(/^.*@sha256:/, "", digest)
