@@ -59,6 +59,8 @@ CSMS는 PVC를 사용하지 않으므로 개발 PVC를 불필요하게 만들지
 
 ### 3. 운영 이미지 digest 고정 및 원본 확인
 
+Registry는 HTTPS를 사용한다. Python 조회도 HTTPS로 접속하며 해당 사설 Registry에는 환경변수 프록시를 사용하지 않는다. 시스템 CA와 기존 Docker CA `/etc/docker/certs.d/registry.chargeops.lab:5000/ca.crt`를 신뢰한다. CA 파일이 다른 경로에 있으면 실행 전에 `export CHARGEOPS_REGISTRY_CA=/실제/CA/파일.crt`를 설정한다. Jenkins agent에도 같은 신뢰 CA가 필요하다. 인증서 검증을 비활성화하거나 HTTP로 우회하지 않는다.
+
 ```bash
 .ci-venv/bin/python scripts/freeze-production.py
 git diff -- chargeops-chatops/overlays/prod/kustomization.yaml

@@ -6,10 +6,12 @@ Run after disabling ops auto Sync and removing ops from Image Updater.
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import ssl
 import subprocess
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler
 from urllib.error import HTTPError, URLError
 
 import yaml
@@ -20,6 +22,20 @@ REGISTRY = 'registry.chargeops.lab:5000'
 
 class RegistryLookupError(RuntimeError):
     """Only validated image references and fixed diagnostic text may be logged."""
+
+
+def urlopen(request, timeout=30):
+    if not request.full_url.startswith(f'https://{REGISTRY}/v2/'):
+        raise RegistryLookupError('Registry requests must use the configured HTTPS endpoint.')
+    context = ssl.create_default_context()
+    ca = os.environ.get('CHARGEOPS_REGISTRY_CA')
+    docker_ca = Path('/etc/docker/certs.d') / REGISTRY / 'ca.crt'
+    if ca:
+        context.load_verify_locations(cafile=ca)
+    elif docker_ca.is_file():
+        context.load_verify_locations(cafile=str(docker_ca))
+    # This private registry is reached directly, independent of HTTP(S)_PROXY.
+    return build_opener(ProxyHandler({}), HTTPSHandler(context=context)).open(request, timeout=timeout)
 
 
 def kubectl(*args):
@@ -39,7 +55,7 @@ def manifest(reference):
     assert repository.startswith(REGISTRY + '/chargeops/')
     path = repository.removeprefix(REGISTRY + '/')
     assert re.fullmatch(r'[a-z0-9/._-]+', path) and re.fullmatch(r'[A-Za-z0-9._:-]+', selector)
-    request = Request(f'http://{REGISTRY}/v2/{path}/manifests/{selector}', headers={'Accept': ', '.join([
+    request = Request(f'https://{REGISTRY}/v2/{path}/manifests/{selector}', headers={'Accept': ', '.join([
         'application/vnd.oci.image.index.v1+json', 'application/vnd.docker.distribution.manifest.list.v2+json',
         'application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.v2+json'])})
     try:
@@ -51,7 +67,9 @@ def manifest(reference):
                  404: 'Repository, tag or digest is missing; compare GitOps with the existing running image.'}
         hint = hints.get(error.code, 'Check the Registry/proxy HTTP service and connectivity.')
         raise RegistryLookupError(f'HTTP {error.code} while reading {reference}. {hint}') from None
-    except URLError:
+    except URLError as error:
+        if isinstance(error.reason, ssl.SSLCertVerificationError):
+            raise RegistryLookupError('Registry TLS certificate verification failed. Set CHARGEOPS_REGISTRY_CA to the trusted CA file, or install /etc/docker/certs.d/registry.chargeops.lab:5000/ca.crt.') from None
         raise RegistryLookupError(f'Cannot reach Registry while reading {reference}. Check DNS, port 5000 and proxy settings.') from None
     assert digest == 'sha256:' + hashlib.sha256(body).hexdigest(), 'Registry manifest digest mismatch'
     children = {m['digest'] for m in json.loads(body).get('manifests', [])}

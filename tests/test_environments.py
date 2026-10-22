@@ -7,6 +7,58 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_registry_lookup_uses_https(monkeypatch):
+    import hashlib
+    spec = importlib.util.spec_from_file_location('freeze_https', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    body = b'{"schemaVersion":2}'
+    class Response:
+        headers = {'Docker-Content-Digest': 'sha256:' + hashlib.sha256(body).hexdigest()}
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self): return body
+    def open_manifest(request, **kwargs):
+        assert request.full_url.startswith('https://registry.chargeops.lab:5000/v2/')
+        return Response()
+    monkeypatch.setattr(module, 'urlopen', open_manifest)
+    module.manifest('registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev')
+
+
+def test_https_transport_keeps_tls_verification_and_bypasses_proxy(monkeypatch):
+    import ssl
+    from urllib.request import Request, ProxyHandler, HTTPSHandler
+    spec = importlib.util.spec_from_file_location('freeze_transport', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.delenv('CHARGEOPS_REGISTRY_CA', raising=False)
+    monkeypatch.setenv('HTTPS_PROXY', 'http://proxy.example.invalid:8080')
+    def opener(*handlers):
+        proxy = next(h for h in handlers if isinstance(h, ProxyHandler))
+        context = next(h for h in handlers if isinstance(h, HTTPSHandler))._context
+        assert proxy.proxies == {}
+        assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+        class Client:
+            def open(self, request, timeout): return 'verified-direct-https'
+        return Client()
+    monkeypatch.setattr(module, 'build_opener', opener)
+    assert module.urlopen(Request('https://registry.chargeops.lab:5000/v2/')) == 'verified-direct-https'
+
+
+def test_custom_registry_ca_is_loaded(monkeypatch):
+    from types import SimpleNamespace
+    from urllib.request import Request
+    spec = importlib.util.spec_from_file_location('freeze_ca', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    loaded = []
+    monkeypatch.setenv('CHARGEOPS_REGISTRY_CA', '/trusted/registry-ca.crt')
+    monkeypatch.setattr(module.ssl, 'create_default_context', lambda: SimpleNamespace(load_verify_locations=lambda **kw: loaded.append(kw)))
+    monkeypatch.setattr(module, 'build_opener', lambda *args: SimpleNamespace(open=lambda *a, **k: None))
+    module.urlopen(Request('https://registry.chargeops.lab:5000/v2/'))
+    assert loaded == [{'cafile': '/trusted/registry-ca.crt'}]
+
+
 @pytest.mark.parametrize('code', [401, 404, 503])
 def test_registry_failure_identifies_image_and_status_without_response_payload(monkeypatch, code):
     from urllib.error import HTTPError
