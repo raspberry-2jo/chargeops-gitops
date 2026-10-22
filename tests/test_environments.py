@@ -17,7 +17,8 @@ def test_image_repository_preserves_port_and_strips_tag_digest(suffix):
     assert module.image_identity(repository + ':dev@sha256:' + 'a' * 64) == repository + '@sha256:' + 'a' * 64
 
 
-def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_path, monkeypatch):
+@pytest.mark.parametrize('scenario', ['matching', 'tag_moved', 'mixed_pods', 'missing_live_manifest'])
+def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_path, monkeypatch, scenario):
     import base64
     import copy
     import json
@@ -39,6 +40,11 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
     def digest(entry): return entry.get('digest', 'sha256:' + 'a' * 64)
     def manifest(reference):
         entry = image_entry(reference)
+        if 'chargeops-csms@sha256:' in reference and not reference.endswith(digest(entry)):
+            if scenario == 'missing_live_manifest':
+                raise module.RegistryLookupError('Existing Pod manifest is not in the Registry')
+            old_digest = reference.split('@', 1)[1]
+            return entry['newName'], old_digest, {old_digest}
         return entry['newName'], digest(entry), {digest(entry)}
     monkeypatch.setattr(module, 'manifest', manifest)
     def kubectl(*args):
@@ -52,13 +58,24 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
             entry = image_entry(c['image'])
             return {'items': [{'metadata': {'name': f'{d["metadata"]["name"]}-{i}'}, 'spec': {'nodeName': 'test-worker'},
                                'status': {'conditions': [{'type': 'Ready', 'status': 'True'}],
-                                          'containerStatuses': [{'name': c['name'], 'imageID': entry['newName'] + '@' + digest(entry)}]}}
+                                          'containerStatuses': [{'name': c['name'], 'imageID': entry['newName'] + '@' +
+                                            (('sha256:' + ('c' if scenario == 'mixed_pods' and i else 'b') * 64)
+                                             if d['metadata']['name'] == 'csms' and scenario != 'matching' else digest(entry))}]}}
                               for i in range(d['spec']['replicas'])]}
         raise AssertionError('Unexpected cluster request')
     monkeypatch.setattr(module, 'kubectl', kubectl)
+    if scenario in ['mixed_pods', 'missing_live_manifest']:
+        original = target.read_text()
+        with pytest.raises((AssertionError, module.RegistryLookupError)):
+            module.main()
+        assert target.read_text() == original
+        assert not (tmp_path / 'artifacts/ops-baseline.json').exists()
+        return
     module.main()
     frozen = yaml.safe_load(target.read_text())
     assert all(i.get('digest') and 'newTag' not in i for i in frozen['images'])
+    csms = next(i for i in frozen['images'] if i['name'].endswith('/chargeops-csms'))
+    assert csms['digest'] == 'sha256:' + ('b' if scenario == 'tag_moved' else 'a') * 64
     assert {d['deployment'] for d in json.loads((tmp_path / 'artifacts/ops-baseline.json').read_text())['deployments']} == {'csms', 'ai-gateway', 'notifier'}
 
 
@@ -78,6 +95,31 @@ def test_registry_lookup_uses_https(monkeypatch):
         return Response()
     monkeypatch.setattr(module, 'urlopen', open_manifest)
     module.manifest('registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot:dev')
+
+
+def test_index_platform_and_runtime_config_ids_are_verified_together(monkeypatch):
+    import hashlib
+    import json
+    spec = importlib.util.spec_from_file_location('freeze_index', ROOT / 'scripts/freeze-production.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    config_id = 'sha256:' + 'c' * 64
+    child = json.dumps({'schemaVersion': 2, 'config': {'digest': config_id}}).encode()
+    child_id = 'sha256:' + hashlib.sha256(child).hexdigest()
+    index = json.dumps({'schemaVersion': 2, 'manifests': [{'digest': child_id, 'platform': {'os': 'linux', 'architecture': 'amd64'}}]}).encode()
+    index_id = 'sha256:' + hashlib.sha256(index).hexdigest()
+    def fetch(request, **kwargs):
+        body = child if request.full_url.endswith(child_id) else index
+        class Response:
+            headers = {'Docker-Content-Digest': 'sha256:' + hashlib.sha256(body).hexdigest()}
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def read(self): return body
+        return Response()
+    monkeypatch.setattr(module, 'urlopen', fetch)
+    _, pinned, identities = module.manifest('registry.chargeops.lab:5000/chargeops/chargeops-csms:dev')
+    assert pinned == index_id
+    assert {index_id, child_id, config_id}.issubset(identities)
 
 
 def test_https_transport_keeps_tls_verification_and_bypasses_proxy(monkeypatch):

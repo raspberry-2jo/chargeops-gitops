@@ -64,7 +64,7 @@ def image_identity(reference):
     return reference
 
 
-def manifest(reference):
+def manifest(reference, depth=0):
     repository, selector = reference.split('@', 1) if '@' in reference else reference.rsplit(':', 1)
     repository = image_repository(reference)
     assert repository.startswith(REGISTRY + '/chargeops/')
@@ -87,8 +87,24 @@ def manifest(reference):
             raise RegistryLookupError('Registry TLS certificate verification failed. Set CHARGEOPS_REGISTRY_CA to the trusted CA file, or install /etc/docker/certs.d/registry.chargeops.lab:5000/ca.crt.') from None
         raise RegistryLookupError(f'Cannot reach Registry while reading {reference}. Check DNS, port 5000 and proxy settings.') from None
     assert digest == 'sha256:' + hashlib.sha256(body).hexdigest(), 'Registry manifest digest mismatch'
-    children = {m['digest'] for m in json.loads(body).get('manifests', [])}
-    return repository, digest, children | {digest}
+    if selector.startswith('sha256:'):
+        assert digest == selector, 'Registry returned a different digest than requested'
+    document = json.loads(body)
+    descriptors = document.get('manifests', [])
+    identities = {m['digest'] for m in descriptors} | {digest}
+    config_digest = document.get('config', {}).get('digest')
+    if config_digest:
+        identities.add(config_digest)
+    # Some runtimes report a platform manifest or image configuration ID.
+    # Verify these identities through the index, not by comparing raw hashes.
+    if depth < 2:
+        assert len(descriptors) <= 64, 'Registry image index is unexpectedly large'
+        for item in descriptors:
+            if item.get('platform', {}).get('architecture') == 'unknown':
+                continue  # Build attestations are not runtime image platforms.
+            _, _, child_ids = manifest(repository + '@' + item['digest'], depth + 1)
+            identities.update(child_ids)
+    return repository, digest, identities
 
 
 def main():
@@ -103,6 +119,7 @@ def main():
     docs = [d for d in yaml.safe_load_all(subprocess.check_output(
         ['kubectl', 'kustomize', 'chargeops-chatops/overlays/prod'], cwd=ROOT, text=True, encoding='utf-8')) if d]
     resolved = {}
+    selected_live = {}
     baseline = []
     for image in config['images']:
         repository = image.get('newName', image['name'])
@@ -119,11 +136,25 @@ def main():
         pods = [p for p in pods if not p['metadata'].get('deletionTimestamp')]
         assert len(pods) == live['spec']['replicas'], 'OPS deployment is not stable'
         repository = image_repository(desired)
+        runtime_digests = set()
         for pod in pods:
             assert any(c['type'] == 'Ready' and c['status'] == 'True' for c in pod['status'].get('conditions', [])), 'OPS Pod is not Ready'
             status = next(c for c in pod['status']['containerStatuses'] if c['name'] == d['spec']['template']['spec']['containers'][0]['name'])
             digest = re.search(r'sha256:[a-f0-9]{64}', status.get('imageID', ''))
-            assert digest and digest.group() in resolved[repository][2], 'Registry tag moved since the live Pod started; resolve baseline manually'
+            assert digest, f'{d["metadata"]["name"]}: running Pod image digest is missing'
+            runtime_digests.add(digest.group())
+        chosen = resolved[repository]
+        if not runtime_digests.issubset(chosen[2]):
+            assert len(runtime_digests) == 1, f'{d["metadata"]["name"]}: running Pods have mixed image digests; wait for a stable baseline'
+            current_digest = next(iter(runtime_digests))
+            chosen = manifest(repository + '@' + current_digest)
+            assert chosen[1] == current_digest, 'Existing Pod manifest could not be verified'
+            print(f'{d["metadata"]["name"]}: tag differs from running Pods; preserving verified running digest {current_digest}')
+        if repository in selected_live:
+            assert runtime_digests.issubset(selected_live[repository][2]), 'Workloads sharing an image repository run different versions; resolve the baseline first'
+            chosen = selected_live[repository]
+        selected_live[repository] = chosen
+        resolved[repository] = chosen
         baseline.append({'deployment': d['metadata']['name'], 'replicas': live['spec']['replicas'],
                          'image': desired, 'pods': [
                              {'name': p['metadata']['name'], 'node': p['spec'].get('nodeName'),

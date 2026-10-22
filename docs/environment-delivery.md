@@ -66,7 +66,7 @@ Registry는 HTTPS를 사용한다. Python 조회도 HTTPS로 접속하며 해당
 git diff -- chargeops-chatops/overlays/prod/kustomization.yaml
 ```
 
-이 스크립트는 DB DSN 유지 여부, 운영 자동 Sync 중지, Dev-only ImageUpdater, 현재 운영 Pod Ready 상태, 실제 Pod digest와 Registry manifest 일치를 확인한 후 **로컬 Prod 이미지 설정만** digest로 고정한다. Pod 이름·노드·이미지 ID 기준은 Git에서 제외된 `artifacts/ops-baseline.json`에 기록하며 비밀 값은 포함하지 않는다. Kubernetes 변경·commit·push는 하지 않는다. 이미지 태그가 이미 이동했거나 실제 운영/Git 이미지가 다르면 중단한다. 그 경우 운영 원본부터 맞추고 다시 실행한다. 이전 digest를 임의로 최신 태그의 digest로 교체하지 않는다.
+이 스크립트는 DB DSN 유지 여부, 운영 자동 Sync 중지, Dev-only ImageUpdater, 현재 운영 Pod Ready 상태, 실제 Pod digest와 Registry manifest를 확인한 후 **로컬 Prod 이미지 설정만** digest로 고정한다. 이미지 index·플랫폼 manifest·config ID의 관계도 검증한다. 태그가 이미 이동했으면 현재 실행 Pod의 digest를 Registry에서 직접 조회해 존재와 내용이 검증된 경우 그 버전을 보존한다. Pod별 digest가 섞였거나 기존 manifest가 사라졌으면 중단한다. 실제 운영/Git의 이미지 참조 자체가 다르면 원본부터 맞춰야 한다. Pod 이름·노드·이미지 ID 기준은 Git에서 제외된 `artifacts/ops-baseline.json`에 기록하며 비밀 값은 포함하지 않는다. Kubernetes 변경·commit·push는 하지 않는다. 이전 digest를 임의로 최신 태그의 digest로 교체하지 않는다.
 
 검토가 끝나면 고정 설정을 별도로 커밋·푸시한다.
 
