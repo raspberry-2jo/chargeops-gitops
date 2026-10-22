@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: collector-v2-raw
+  name: collector-raw
 spec:
   accessModes:
     - ReadWriteOnce

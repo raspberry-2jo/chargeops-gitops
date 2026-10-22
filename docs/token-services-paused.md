@@ -1,12 +1,12 @@
 # 토큰 및 필수 Secret을 사용하는 서비스 임시 중지
 
-토큰 준비 전 실행을 보류했던 서비스 중 `chatops-bot`과 `alert-router`는 실행 설정으로 복원했습니다.
-현재 중지 대상은 `chatops-bot-v2`, `notifier-v2`, `csms-v2` 3개입니다.
+버전 표기가 붙어 있던 원본 파일을 우선하여 이름을 통합했습니다.
+현재 중지 대상은 `chatops-bot`, `notifier`, `csms` 3개입니다. alert-router는 활성 overlay에서 제외했습니다.
 변경 위치는 모두 `chargeops-chatops/base/<서비스>/deployment.yaml`입니다.
 
-현재 `chatops-bot`은 Socket Mode 수신 프로세스를 하나만 운영하도록 `replicas: 1`로 설정합니다.
-업데이트 전략은 기존 `Recreate`를 유지합니다. 운영환경에서 수동 scale 대신 GitOps 설정으로 반영합니다.
-Argo CD Sync 후 다음 명령의 출력이 `1 / Recreate`인지 확인합니다.
+현재 `chatops-bot`은 우선 적용한 원본처럼 `replicas: 0`으로 보류합니다.
+업데이트 전략은 `Recreate`를 유지합니다. Secret·DB 준비 후 GitOps에서 replica를 1로 변경합니다.
+Argo CD Sync 후 다음 명령의 출력이 `0 / Recreate`인지 확인합니다.
 
 ```bash
 kubectl -n ops get deploy chatops-bot \
@@ -15,21 +15,19 @@ kubectl -n ops get deploy chatops-bot \
 
 | 서비스 | 사용하는 토큰 / 필수 Secret |
 |---|---|
-| chatops-bot | SLACK_BOT_TOKEN, SLACK_APP_TOKEN, INTERNAL_TOKEN / slack-credentials, bot-backend-credentials |
-| alert-router | SLACK_BOT_TOKEN, INTERNAL_TOKEN, TRIGGER_KEY / router-credentials |
-| chatops-bot-v2 | SLACK_BOT_TOKEN, SLACK_APP_TOKEN, CSMS_API_TOKEN, JENKINS_TOKEN / chargeops-app-secrets |
-| notifier-v2 | SLACK_BOT_TOKEN, CSMS_API_TOKEN / chargeops-app-secrets |
-| csms-v2 | API_TOKEN 및 필수 DB_DSN / chargeops-app-secrets |
+| chatops-bot | SLACK_BOT_TOKEN, SLACK_APP_TOKEN, DB_DSN, CSMS_API_TOKEN, JENKINS_TOKEN / chargeops-app-secrets |
+| notifier | SLACK_BOT_TOKEN, CSMS_API_TOKEN / chargeops-app-secrets |
+| csms | API_TOKEN 및 필수 DB_DSN / chargeops-app-secrets |
 
-CSMS v2의 API_TOKEN은 코드에서 선택 사항이지만 Deployment가 필수 Secret을 참조하고 DB_DSN도 필요하므로
+CSMS의 API_TOKEN은 코드에서 선택 사항이지만 Deployment가 필수 Secret을 참조하고 DB_DSN도 필요하므로
 이번 준비 전 중지 대상에 포함했습니다. 실제 토큰 값은 파일에 추가하지 않았습니다.
 
 Collector는 Deployment가 아닌 CronJob이며 EV_SERVICE_KEY와 DB 인증 정보가 필요합니다.
-`collector-v2-status`, `collector-v2-info`, `collector-v2-check`는 이미 모두 `suspend: true`이므로 그대로 유지합니다.
+`collector-status`, `collector-info`, `collector-check`는 이미 모두 `suspend: true`이므로 그대로 유지합니다.
 
-토큰 없이 실행 가능한 `ai-gateway`, `vcharger-v2`의 replicas는 1을 유지합니다.
+토큰 없이 실행 가능한 `ai-gateway`, `vcharger`의 replicas는 1을 유지합니다.
 AI gateway의 DB Secret 참조는 optional이며 업무 API 사용에는 실제 DB 연결이 필요합니다.
-vcharger-v2는 중지된 csms-v2에 연결할 수 없어 OCPP 업무 흐름은 사용할 수 없습니다.
+vcharger는 중지된 csms에 연결할 수 없어 OCPP 업무 흐름은 사용할 수 없습니다.
 
 ## 반영 및 복원
 
@@ -41,7 +39,7 @@ base의 replicas 변경이므로 해당 base를 사용하는 다른 overlay에�
 Secret 및 외부 서비스 준비 후 실행할 Deployment의 replicas를 1로 되돌리고 GitOps로 반영합니다.
 Collector는 DB/API/스토리지 확인 후 필요한 CronJob만 suspend를 false로 변경합니다.
 
-Image Updater 설정은 변경하지 않았습니다. 실행 Pod가 없는 Deployment의 이미지가 Argo CD Application
+Image Updater는 앱 이미지 6개를 추적합니다. 실행 Pod가 없는 Deployment의 이미지가 Argo CD Application
 상태에 나타나지 않으면 Image Updater가 해당 이미지를 생략할 수 있으므로, 중지 중에도 digest 추적을
 계속해야 한다면 해당 alias의 forceUpdate 설정을 별도로 확인합니다.
 
