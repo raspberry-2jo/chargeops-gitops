@@ -42,7 +42,15 @@ spec:
             - name: METRICS_PORT
               value: '9100'
             - name: DB_POOL
-              value: '10'
+              value: '20'
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: PEERS_DNS
+              value: csms-pods.ops.svc.cluster.local
+            - name: DRAIN_SECONDS
+              value: '20'
           ports:
             - name: http
               containerPort: 8000
