@@ -50,3 +50,20 @@ def test_sync_failure_provides_fixed_hint_without_echoing_api_data(message, hint
                                     'syncResult': {'resources': [{'message': secret}]}})
     assert hint in error
     assert secret not in error
+
+
+def test_git_pull_failure_reports_step_without_echoing_sensitive_child_output(monkeypatch):
+    def failed(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 128, '', 'fatal: Authentication failed https://user:private-token@example.invalid')
+    monkeypatch.setattr(bootstrap.subprocess, 'run', failed)
+    with pytest.raises(ValueError, match='git pull') as error:
+        bootstrap.run('git', 'pull', '--ff-only', 'origin', 'main')
+    assert 'authentication' in str(error.value).lower()
+    assert 'private-token' not in str(error.value)
+
+
+def test_api_failure_reports_step_and_fixed_cause(monkeypatch):
+    monkeypatch.setattr(bootstrap.subprocess, 'run', lambda *a, **k:
+                        subprocess.CompletedProcess(a, 1, '', 'Unable to connect to the server: x509: certificate signed by unknown authority'))
+    with pytest.raises(ValueError, match='kubectl get.*CA'):
+        bootstrap.run('kubectl', '-n', 'ops', 'get', 'deployment', 'csms', '-o', 'json')
