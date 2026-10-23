@@ -5,7 +5,7 @@ metadata:
   annotations:
     chargeops.io/csms-code-ast-sha256: 04a4faf5a6070486fe340f24bc0059e177ae416a5fd79d0cb909e81b62f2c5dc
 spec:
-  replicas: 4
+  replicas: 0
   selector:
     matchLabels:
       app: csms
