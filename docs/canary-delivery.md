@@ -77,7 +77,19 @@ git pull --ff-only origin main
 5. 초기 Rollout은 Canary 단계를 건너뛰므로 별도 기준 AnalysisRun도 통과시킨다. 그 뒤에만 Deployment replica를 Git에서 0으로 바꾸고 커밋·Push·Sync한다. 이후 Rollout이 4개를 관리한다.
 6. `~/.chargeops-jenkins/canary-kubeconfig.yaml`을 권한 600으로 생성하고 권한을 검증한다. 이 파일은 Git에 넣지 않는다.
 
-기존 `chargeops-config`, `chargeops-secrets`, `chargeops-ca`, PVC, 기존 headless/LB Service 등은 생성·복사·삭제하지 않는다. 실제 command·CA 참조·affinity·topologySpread는 live Deployment에서 보존한다. 다만 `csms-app-test` 등으로 `/app/csms/app.py` 또는 앱 디렉터리를 덮어쓰면 이미지 검증이 무효가 되므로 **초기 전환 전에 중단**한다. 이 경우 수정 코드를 앱 이미지에 반영하고 코드 덮어쓰기를 제거한 운영 기준부터 준비해야 한다. 임의로 해당 마운트를 삭제하지 않는다.
+기존 `chargeops-config`, `chargeops-secrets`, `chargeops-ca`, PVC, 기존 headless/LB Service 등은 생성·복사·삭제하지 않는다. 실제 command·CA 참조·affinity·topologySpread는 live Deployment에서 보존한다. 다만 `csms-app-test` 등으로 `/app/csms/app.py` 또는 앱 디렉터리를 덮어쓰면 이미지 검증이 무효가 되므로 기본 실행은 **초기 전환 전에 중단**한다. 임의로 해당 마운트를 삭제하지 않는다.
+
+`app.py` 단일 파일의 ConfigMap 마운트라면 다음 옵션으로 안전한 자동 전환을 시도할 수 있다.
+
+```bash
+.ci-venv/bin/python scripts/bootstrap-canary.py --migrate-code-mount
+```
+
+이 옵션은 **고정된 운영 이미지**에서 Python만 실행해 이미지의 `/app/csms/app.py`와 실제 마운트된 ConfigMap `app.py`를 AST로 비교한다. 같은 Python 버전으로 두 코드를 파싱하며 주석·공백 차이는 무시한다. 앱 코드 자체를 import하거나 실행하지 않고, 컨테이너 네트워크와 쓰기를 차단하며 Secret·DB 연결값을 전달하지 않는다.
+
+코드가 일치할 때만 runtime patch에서 해당 `app.py` 마운트와 사용하지 않는 볼륨 참조를 제거한다. ConfigMap 리소스 자체는 보존한다. CA 등 다른 마운트와 환경·분산 배치는 유지한다. 그 후 기존 digest로 CSMS를 선택적 Sync하고 가용성 검사와 Rollout 전환을 진행한다. 따라서 이 옵션 역시 운영 Pod 교체를 수반할 수 있는 **운영 초기 전환 명령**이다.
+
+코드가 다르거나 폴더 전체를 마운트하거나 파일 대응이 불명확하면 Git/운영 워크로드 변경 전에 중단한다. 이 경우 ConfigMap 변경을 앱 소스·이미지에 반영하고 Dev 검증 후 운영 기준을 교체해야 한다. 검사 중 ConfigMap 버전이나 운영 Deployment가 바뀌어도 Sync 전에 중단한다. 재실행 시에도 실제 마운트가 남아 있다면 같은 옵션으로 다시 검증한다. 코드 비교 증거로 AST 해시만 Git에 기록하며 ConfigMap 코드와 데이터는 복사하지 않는다.
 
 부분 실패 시 기존 리소스를 삭제하지 말고 오류 원인을 해결한 후 같은 스크립트를 재실행한다. 생성한 runtime patch를 재사용한다. kubeconfig만 갱신할 때는 다음 명령을 사용한다.
 

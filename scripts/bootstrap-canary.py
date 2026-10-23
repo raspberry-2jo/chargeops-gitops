@@ -71,6 +71,79 @@ def commit_runtime(message):
     return run('git', 'rev-parse', 'HEAD')
 
 
+def code_comparison_program(path='/app/csms/app.py'):
+    # Parse both sources with the image's Python version. Never import/execute
+    # the app, open a DB connection, or print source text/ConfigMap contents.
+    return '''import ast, hashlib, json, sys
+from pathlib import Path
+def identity(source):
+    tree = ast.dump(ast.parse(source), annotate_fields=True, include_attributes=False)
+    return hashlib.sha256(tree.encode('utf-8')).hexdigest()
+mounted = identity(sys.stdin.read())
+image = identity(Path(''' + repr(path) + ''').read_text(encoding='utf-8-sig'))
+print(json.dumps({'match': mounted == image, 'image_ast_sha256': image, 'mounted_ast_sha256': mounted}))
+'''
+
+
+def remove_verified_code_mount(live, image):
+    """Plan removal only when the pinned image already contains the mounted code."""
+    source = copy.deepcopy(live)
+    pod = source['spec']['template']['spec']
+    containers = pod.get('containers', [])
+    if len(containers) != 1 or containers[0]['name'] != 'csms' or pod.get('initContainers'):
+        raise ValueError('Code mount migration requires a single CSMS container without init containers')
+    container = containers[0]
+    code_mounts = [m for m in container.get('volumeMounts', [])
+                   if m.get('mountPath', '').rstrip('/') in ['/app', '/app/csms', '/app/csms/app.py']]
+    if not code_mounts:
+        return source, None
+    if len(code_mounts) != 1 or code_mounts[0].get('mountPath') != '/app/csms/app.py':
+        raise ValueError('Automatic migration supports only the single app.py file, not directory code mounts')
+    mount = code_mounts[0]
+    if mount.get('subPathExpr') or mount.get('subPath') != 'app.py':
+        raise ValueError('Code mount migration requires a fixed app.py subPath')
+    volume = next((v for v in pod.get('volumes', []) if v['name'] == mount['name']), {})
+    reference = volume.get('configMap', {})
+    name = reference.get('name', '')
+    if not re.fullmatch(r'[a-z0-9][a-z0-9.-]*', name):
+        raise ValueError('Code mount source must be an existing ConfigMap reference')
+    if reference.get('items') and not any(i.get('path') == 'app.py' and i.get('key') == 'app.py' for i in reference['items']):
+        raise ValueError('Code mount must project the ConfigMap app.py key')
+    if not re.fullmatch(r'registry\.chargeops\.lab:5000/chargeops/chargeops-csms@sha256:[a-f0-9]{64}', image):
+        raise ValueError('Code comparison requires the pinned production CSMS image')
+    configmap = get('-n', 'ops', 'get', 'configmap', name)
+    code = configmap.get('data', {}).get('app.py')
+    if not isinstance(code, str) or not code.strip():
+        raise ValueError('Mounted ConfigMap app.py is missing or empty')
+    print('Comparing ConfigMap app.py with the pinned CSMS image in an isolated Docker container', flush=True)
+    try:
+        result = json.loads(run('docker', 'run', '--rm', '-i', '--network=none', '--read-only',
+                               '--cap-drop=ALL', '--security-opt=no-new-privileges', '--memory=128m',
+                               '--cpus=0.5', '--pids-limit=32', '--entrypoint', 'python', image,
+                               '-c', code_comparison_program(), payload=code))
+    except RuntimeError:
+        raise ValueError('Cannot inspect app.py in the pinned image. Check Docker permissions, image availability and Python syntax; no code mount was removed') from None
+    digest = result.get('image_ast_sha256', '')
+    if (result.get('match') is not True or not re.fullmatch(r'[a-f0-9]{64}', digest)
+            or digest != result.get('mounted_ast_sha256')):
+        raise ValueError('Mounted CSMS code differs from the pinned image. Build and validate an image containing that code before removing the mount; no workload changes were made')
+    version = configmap['metadata'].get('resourceVersion')
+    if not version:
+        raise ValueError('ConfigMap version is missing; cannot verify the migration baseline')
+    container['volumeMounts'] = [m for m in container.get('volumeMounts', []) if m is not mount]
+    if not any(m['name'] == mount['name'] for m in container['volumeMounts']):
+        pod['volumes'] = [v for v in pod.get('volumes', []) if v['name'] != mount['name']]
+    proof = {'configmap': name, 'resource_version': version, 'code_ast_sha256': digest}
+    print('Verified: mounted CSMS code matches the pinned image; planning removal of only its app.py mount', flush=True)
+    return source, proof
+
+
+def check_code_migration(proof):
+    current = get('-n', 'ops', 'get', 'configmap', proof['configmap'])
+    if current['metadata'].get('resourceVersion') != proof['resource_version']:
+        raise ValueError('ConfigMap changed during bootstrap; rerun to compare code again before Sync')
+
+
 def runtime_patch(live):
     template = copy.deepcopy(live['spec']['template'])
     pod = template['spec']
@@ -234,7 +307,7 @@ def baseline_analysis():
     raise ValueError('Baseline analysis timed out; existing Deployment was not scaled down')
 
 
-def bootstrap(duration):
+def bootstrap(duration, migrate_code_mount=False):
     git_clean()
     live = get('-n', 'ops', 'get', 'deployment', 'csms')
     config_path = ROOT / PROD / 'kustomization.yaml'
@@ -246,13 +319,18 @@ def bootstrap(duration):
     app = get('-n', 'argocd', 'get', 'application', APPLICATION)
     if app['spec'].get('syncPolicy', {}).get('automated'):
         raise ValueError('Turn off ops auto Sync before bootstrap')
+    captured, proof = remove_verified_code_mount(live, image) if migrate_code_mount else (live, None)
+    captured_patch = runtime_patch(captured)
     path = ROOT / PROD / RUNTIME
     if path.exists():
         patch = yaml.safe_load(path.read_text(encoding='utf-8'))
+        runtime_patch(patch)  # Do not trust an existing patch that still overrides code.
     else:
         if live['spec'].get('replicas') != 4 or live.get('status', {}).get('availableReplicas', 0) < 4:
             raise ValueError('Bootstrap requires four available original CSMS replicas')
-        patch = runtime_patch(live)
+        patch = captured_patch
+        if proof:
+            patch['metadata']['annotations'] = {'chargeops.io/csms-code-ast-sha256': proof['code_ast_sha256']}
         # Keep the template pinned even when the live Deployment used :dev.
         patch['spec']['template']['spec']['containers'][0]['image'] = image
         registry = module('freeze-production')
@@ -271,6 +349,11 @@ def bootstrap(duration):
         config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding='utf-8')
         commit_runtime('chore(gitops): preserve verified live CSMS runtime before canary handover')
     install_controller()
+    if proof:
+        check_code_migration(proof)
+        current = get('-n', 'ops', 'get', 'deployment', 'csms')
+        if current['spec']['template'] != live['spec']['template'] or current['spec']['replicas'] != live['spec']['replicas']:
+            raise ValueError('Live CSMS changed during code migration; rerun before Sync')
     # All application writes, including handover, are executed by Argo CD.
     run('kubectl', 'apply', '-f', str(ROOT / 'chargeops-chatops/argocd/application-canary.yaml'))
     planned = render(CANARY)
@@ -297,6 +380,7 @@ def bootstrap(duration):
         print('Baseline verified; handing replicas from Deployment to Rollout through Git and Argo CD', flush=True)
         path.write_text(yaml.safe_dump(patch, sort_keys=False), encoding='utf-8')
         revision = commit_runtime('chore(gitops): hand CSMS replicas to verified Rollout')
+    if get('-n', 'ops', 'get', 'deployment', 'csms')['spec']['replicas'] != 0:
         sync(revision, deployment_resource)
     wait_baseline(image)
     if get('-n', 'ops', 'get', 'deployment', 'csms')['spec']['replicas'] != 0:
@@ -310,17 +394,20 @@ def main():
     parser.add_argument('--duration', default='unlimited', help='Default: non-expiring Secret token; optional requested lifetime, for example 24h')
     parser.add_argument('--credential-only', action='store_true', help='Renew only the restricted kubeconfig after initial bootstrap')
     parser.add_argument('--controller-only', action='store_true', help='Install the controller/RBAC without changing the ops Application or CSMS')
+    parser.add_argument('--migrate-code-mount', action='store_true', help='Compare mounted app.py with the pinned image, and remove only an equivalent code mount during handover')
     args = parser.parse_args()
     if args.duration != 'unlimited' and not re.fullmatch(r'[1-9][0-9]*(s|m|h)', args.duration):
         raise ValueError('Invalid requested token duration')
     if args.credential_only and args.controller_only:
         raise ValueError('Choose only one bootstrap mode')
+    if args.migrate_code_mount and (args.credential_only or args.controller_only):
+        raise ValueError('Code mount migration is available only during full bootstrap')
     if args.controller_only:
         install_controller()
     elif args.credential_only:
         create_kubeconfig(args.duration)
     else:
-        bootstrap(args.duration)
+        bootstrap(args.duration, args.migrate_code_mount)
 
 
 if __name__ == '__main__':
