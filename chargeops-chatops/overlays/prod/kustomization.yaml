@@ -27,3 +27,5 @@ images:
 - name: registry.chargeops.lab:5000/chargeops/collector
   newName: registry.chargeops.lab:5000/chargeops/collector
   digest: sha256:7e4a1d30dd73f89ca5ecd1453fc56d140f5013f4090e4847612bf8dbf0a871aa
+patches:
+- path: csms-runtime.yaml

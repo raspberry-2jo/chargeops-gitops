@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csms
+  annotations:
+    chargeops.io/csms-code-ast-sha256: 04a4faf5a6070486fe340f24bc0059e177ae416a5fd79d0cb909e81b62f2c5dc
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: csms
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: csms
+        app.kubernetes.io/name: csms
+      annotations: {}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: csms
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      automountServiceAccountToken: false
+      containers:
+      - command:
+        - sh
+        - -c
+        - ulimit -n 65536 && exec uvicorn csms.app:app --host 0.0.0.0 --port 8000
+        env:
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              key: DB_DSN
+              name: chargeops-secrets
+        - name: API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: CSMS_API_TOKEN
+              name: chargeops-secrets
+        - name: REQUIRE_CN
+          value: 'false'
+        - name: HEARTBEAT_INTERVAL
+          value: '30'
+        - name: OCPP_PORT
+          value: '9000'
+        - name: METRICS_PORT
+          value: '9100'
+        - name: DB_POOL
+          value: '20'
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: PEERS_DNS
+          value: csms-pods.ops.svc.cluster.local
+        - name: DRAIN_SECONDS
+          value: '20'
+        image: registry.chargeops.lab:5000/chargeops/chargeops-csms@sha256:32af39b5140bdef430c2808d8a9b160d8b92024d49d052585e3b4fe12cebe691
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /healthz
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 10
+        name: csms
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        - containerPort: 9000
+          name: ocpp
+          protocol: TCP
+        - containerPort: 9100
+          name: metrics
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/chargeops-ca
+          name: ca
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      terminationGracePeriodSeconds: 40
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            app: csms
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: chargeops-ca
+        name: ca
+    $patch: replace
