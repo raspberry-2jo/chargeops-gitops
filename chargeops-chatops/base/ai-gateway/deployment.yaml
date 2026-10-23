@@ -34,7 +34,7 @@ spec:
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:
-                  name: chargeops-app-secrets
+                  name: chargeops-secrets
                   key: DB_DSN
                   optional: true
             - name: OLLAMA_URL
