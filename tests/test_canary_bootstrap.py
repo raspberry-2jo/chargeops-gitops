@@ -32,6 +32,8 @@ def test_handover_never_scales_down_before_verified_baseline(tmp_path, monkeypat
     frozen.update(apiVersion='apps/v1', kind='Deployment', metadata={'name': 'csms'})
     frozen['spec']['template']['spec']['containers'][0]['image'] = image
     additions = [{'apiVersion': 'argoproj.io/v1alpha1', 'kind': 'Rollout', 'metadata': {'name': 'csms'}}]
+    additions.append({'apiVersion': 'networking.k8s.io/v1', 'kind': 'NetworkPolicy',
+                      'metadata': {'name': 'csms-canary-probe'}})
     monkeypatch.setattr(bootstrap, 'ROOT', tmp_path)
     monkeypatch.setattr(bootstrap, 'git_clean', lambda: None)
     monkeypatch.setattr(bootstrap, 'render', lambda path: [frozen] + (additions if path == bootstrap.CANARY else []))
@@ -66,12 +68,17 @@ def test_handover_never_scales_down_before_verified_baseline(tmp_path, monkeypat
     def sync(revision, resources):
         if resources[0]['kind'] == 'Deployment':
             state['replicas'] = yaml.safe_load((directory / bootstrap.RUNTIME).read_text())['spec']['replicas']
+        else:
+            assert {'group': 'networking.k8s.io', 'kind': 'NetworkPolicy',
+                    'name': 'csms-canary-probe'} in resources
+            events.append('probe-network-allowed')
         events.append(('sync', resources[0]['kind'], state['replicas']))
     monkeypatch.setattr(bootstrap, 'sync', sync)
     def baseline(ref):
         events.append('baseline')
         if failure == 'baseline': raise ValueError('not ready')
     def analysis():
+        assert 'probe-network-allowed' in events
         events.append('analysis')
         if failure == 'analysis': raise ValueError('failed')
     monkeypatch.setattr(bootstrap, 'wait_baseline', baseline)

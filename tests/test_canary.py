@@ -32,7 +32,8 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
         assert actual[identity(d)] == d
     additions = set(actual) - {identity(d) for d in prod}
     assert additions == {('Rollout', 'csms'), ('AnalysisTemplate', 'csms-availability'),
-                         ('Service', 'csms-stable'), ('Service', 'csms-canary'), ('ConfigMap', 'csms-canary-probe')}
+                         ('Service', 'csms-stable'), ('Service', 'csms-canary'), ('ConfigMap', 'csms-canary-probe'),
+                         ('NetworkPolicy', 'csms-canary-probe')}
     rollout = actual['Rollout', 'csms']['spec']
     assert rollout['replicas'] == 4
     assert rollout['workloadRef']['scaleDown'] == 'never'
@@ -46,6 +47,15 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
     job = metric['provider']['job']['spec']
     assert job['backoffLimit'] == 0 and job['activeDeadlineSeconds'] == 240
     assert 'envFrom' not in job['template']['spec']['containers'][0]
+    # The existing ops default-deny/csms-ingress policies do not admit an
+    # unlabelled analysis Pod. This additive rule must select its exact label.
+    labels = job['template']['metadata']['labels']
+    policy = actual['NetworkPolicy', 'csms-canary-probe']['spec']
+    assert policy['podSelector'] == {'matchLabels': {'app': 'csms'}}
+    assert policy['policyTypes'] == ['Ingress']
+    assert policy['ingress'] == [{'from': [{'podSelector': {'matchLabels': labels}}],
+                                  'ports': [{'protocol': 'TCP', 'port': 8000}]}]
+    assert labels == {'chargeops.io/role': 'canary-probe'}
 
 
 @pytest.mark.parametrize('failure', ['errors', 'slow', 'relative', 'empty', 'undersampled'])

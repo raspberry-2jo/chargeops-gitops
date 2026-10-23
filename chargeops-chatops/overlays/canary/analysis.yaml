@@ -16,6 +16,9 @@ spec:
             activeDeadlineSeconds: 240
             ttlSecondsAfterFinished: 86400
             template:
+              metadata:
+                labels:
+                  chargeops.io/role: canary-probe
               spec:
                 serviceAccountName: csms-canary-probe
                 restartPolicy: Never

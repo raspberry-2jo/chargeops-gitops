@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: csms-canary-probe
+spec:
+  podSelector:
+    matchLabels:
+      app: csms
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              chargeops.io/role: canary-probe
+      ports:
+        - protocol: TCP
+          port: 8000

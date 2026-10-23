@@ -6,6 +6,7 @@ resources:
   - rollout.yaml
   - services.yaml
   - analysis.yaml
+  - networkpolicy.yaml
 configMapGenerator:
   - name: csms-canary-probe
     files:

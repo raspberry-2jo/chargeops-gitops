@@ -1,5 +1,15 @@
 # Bootstrap Sync 실패 확인
 
+## Baseline HTTP 검사에서 전체 대상이 Timeout인 경우
+
+CSMS 내부의 `127.0.0.1:8000/healthz`는 HTTP 200인데 검사 Pod에서 모든 Service가 Timeout이라면 기존 ingress 정책의 허용 대상을 확인한다. 운영 `csms-ingress`는 기존 앱만 허용하므로 별도 라벨이 없는 Analysis Job은 차단될 수 있다.
+
+Canary overlay는 검사 Pod에 `chargeops.io/role: canary-probe` 라벨을 붙이고, 새 `NetworkPolicy/csms-canary-probe`로 같은 namespace의 해당 Pod에서 `app: csms` Pod의 TCP 8000으로만 접근을 허용한다. 기존 Helm 관리 정책은 변경하거나 GitOps에 복사하지 않는다. 이 허용은 라벨을 기준으로 하며 ServiceAccount를 인증하는 규칙은 아니다.
+
+최신 main을 Pull하고 bootstrap을 다시 실행하면 새 정책과 AnalysisTemplate이 Argo CD 선택 Sync로 반영된 뒤 새 baseline 검사가 실행된다. 과거 실패한 AnalysisRun을 삭제하거나 성공으로 변경할 필요는 없다. 기존 임시 검사 명령에는 이 라벨이 없으므로 재사용하려면 `kubectl run`에 `--labels=chargeops.io/role=canary-probe`를 추가해야 한다.
+
+## Git / Sync 오류
+
 `--migrate-code-mount`의 코드 비교 성공은 이미지 검증 결과이며, Argo CD Sync 완료를 의미하지 않는다. 실패 시 Deployment, Rollout, PVC를 삭제하거나 Force/Replace Sync를 실행하지 않는다.
 
 mgmt의 GitOps 저장소에서 다음을 확인한다. 출력 공유 시 인증 정보는 제외한다.
