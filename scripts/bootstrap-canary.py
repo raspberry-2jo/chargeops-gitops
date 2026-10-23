@@ -35,7 +35,7 @@ class CommandFailure(ValueError, RuntimeError):
 
 def command_step(args):
     verbs = {'git': {'branch', 'status', 'pull', 'fetch', 'rev-list', 'rev-parse', 'diff', 'ls-files', 'add', 'commit', 'push'},
-             'kubectl': {'get', 'apply', 'patch', 'wait', 'rollout', 'kustomize', 'create', 'config'},
+             'kubectl': {'get', 'apply', 'replace', 'patch', 'wait', 'rollout', 'kustomize', 'create', 'config'},
              'docker': {'run', 'pull', 'tag', 'push'}}
     executable = args[0] if args[0] in verbs else 'external command'
     verb = next((arg for arg in args[1:] if arg in verbs.get(executable, set())), '')
@@ -270,7 +270,9 @@ def sync_failure(state):
     return 'Argo CD bootstrap Sync failed. ' + hint + '; existing resources were not deleted'
 
 
-def sync(revision, resources):
+def sync(revision, resources, replace=False):
+    if replace and resources != [{'group': 'apps', 'kind': 'Deployment', 'name': 'csms'}]:
+        raise ValueError('Replacement is restricted to the verified CSMS Deployment handover')
     app = get('-n', 'argocd', 'get', 'application', APPLICATION)
     if app['spec']['source']['path'] != CANARY or app['spec'].get('syncPolicy', {}).get('automated'):
         raise ValueError('Expected the manual ops Canary Application')
@@ -279,6 +281,8 @@ def sync(revision, resources):
     marker = 'chargeops-bootstrap-' + uuid.uuid4().hex[:12]
     operation = {'operation': {'initiatedBy': {'username': marker},
                  'sync': {'revision': revision, 'prune': False, 'resources': resources}}}
+    if replace:
+        operation['operation']['sync']['syncOptions'] = ['Replace=true']
     run('kubectl', '-n', 'argocd', 'patch', 'application', APPLICATION, '--type=merge', '-p', json.dumps(operation))
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
@@ -298,12 +302,15 @@ def wait_baseline(image):
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
         rollout = get('-n', 'ops', 'get', 'rollout', 'csms')
+        deployment = get('-n', 'ops', 'get', 'deployment', 'csms')
         status = rollout.get('status', {})
         sets = get('-n', 'ops', 'get', 'replicasets', '-l', 'app=csms')['items']
         stable = [r for r in sets if any(o.get('uid') == rollout['metadata']['uid'] for o in r['metadata'].get('ownerReferences', []))
                   and r['metadata'].get('labels', {}).get('rollouts-pod-template-hash') == status.get('stableRS')]
         if (status.get('phase') == 'Healthy' and status.get('availableReplicas', 0) >= 4 and len(stable) == 1
+                and str(status.get('workloadObservedGeneration', '')) == str(deployment['metadata']['generation'])
                 and stable[0].get('status', {}).get('availableReplicas', 0) >= 4
+                and stable[0]['spec']['template']['spec'] == deployment['spec']['template']['spec']
                 and any(c['name'] == 'csms' and c['image'] == image for c in stable[0]['spec']['template']['spec']['containers'])):
             return
         time.sleep(5)
@@ -433,11 +440,28 @@ def bootstrap(duration, migrate_code_mount=False):
         print('Baseline verified; handing replicas from Deployment to Rollout through Git and Argo CD', flush=True)
         path.write_text(yaml.safe_dump(patch, sort_keys=False), encoding='utf-8')
         revision = commit_runtime('chore(gitops): hand CSMS replicas to verified Rollout')
-    if get('-n', 'ops', 'get', 'deployment', 'csms')['spec']['replicas'] != 0:
-        sync(revision, deployment_resource)
+    actual = get('-n', 'ops', 'get', 'deployment', 'csms')
+    desired = next(d for d in render(PROD) if d['kind'] == 'Deployment' and d['metadata']['name'] == 'csms')
+    if (actual['spec']['replicas'] != 0
+            or actual['spec']['template']['spec'] != desired['spec']['template']['spec']
+            or actual['spec']['template']['metadata'].get('labels') != desired['spec']['template']['metadata'].get('labels')):
+        # Client-side apply can preserve Helm-owned fields omitted from Git,
+        # including the old code mount. Replace only this Deployment at zero,
+        # after the four Rollout replicas and baseline analysis are verified.
+        if desired['spec']['replicas'] != 0:
+            raise ValueError('Expected zero Deployment replicas for the verified handover')
+        replacement = copy.deepcopy(desired)
+        replacement['metadata']['resourceVersion'] = actual['metadata']['resourceVersion']
+        run('kubectl', 'replace', '--dry-run=server', '-f', '-', payload=yaml.safe_dump(replacement))
+        print('Reconciling the zero-replica Deployment runtime through selective Argo CD replacement', flush=True)
+        sync(revision, deployment_resource, replace=True)
     wait_baseline(image)
     if get('-n', 'ops', 'get', 'deployment', 'csms')['spec']['replicas'] != 0:
         raise ValueError('Deployment handover did not finish')
+    actual = get('-n', 'ops', 'get', 'deployment', 'csms')
+    if (actual['spec']['template']['spec'] != desired['spec']['template']['spec']
+            or actual['spec']['template']['metadata'].get('labels') != desired['spec']['template']['metadata'].get('labels')):
+        raise ValueError('Deployment runtime still differs from Git after handover; do not approve Canary')
     create_kubeconfig(duration)
     print('PASS: same-image baseline healthy, availability analysis passed, Rollout owns four replicas')
 

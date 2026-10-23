@@ -10,6 +10,16 @@ Canary overlay는 검사 Pod에 `chargeops.io/role: canary-probe` 라벨을 붙�
 
 ## Git / Sync 오류
 
+## 승인 직전 volumeMounts / volumes 차이로 중단되는 경우
+
+Git의 runtime patch에는 CA만 있는데 실제 Deployment에 `csms-app-test` 마운트가 남을 수 있다. Kustomize의 `$patch: replace`는 렌더링 시 동작하며, 클러스터의 이전 Helm 소유 필드를 일반 client-side apply로 반드시 삭제한다는 뜻은 아니다. 기존 bootstrap은 replicas가 이미 0인 재시도에서 Deployment Sync를 건너뛰어 이 차이를 놓쳤다.
+
+최신 bootstrap을 `--migrate-code-mount`로 재실행한다. 먼저 고정 이미지와 ConfigMap 코드 일치, Rollout 4개와 baseline 가용성 검사를 검증한다. 이후 Git의 Deployment replicas가 0인지 확인하고, 서버 replacement dry-run을 통과한 뒤 해당 Deployment 하나만 Argo CD `Replace=true` 선택 Sync로 맞춘다. `Force=true`, prune, 리소스 삭제는 사용하지 않는다. CA와 ConfigMap 리소스 자체는 보존한다.
+
+이 작업은 실제 Pod template을 바꾸므로 같은 이미지여도 Rollout Pod 교체가 발생할 수 있다. 완료 전 최신 Deployment generation을 Rollout이 관찰했고 stable ReplicaSet의 Pod spec이 일치하며 4개가 가용한지 확인한다. 실제 Deployment runtime이 Git과 계속 다르면 PASS를 출력하지 않는다. 이후 Jenkins를 새로 실행해 Dev 검증과 승인부터 다시 진행한다.
+
+## Git 커밋 발행 확인
+
 `--migrate-code-mount`의 코드 비교 성공은 이미지 검증 결과이며, Argo CD Sync 완료를 의미하지 않는다. 실패 시 Deployment, Rollout, PVC를 삭제하거나 Force/Replace Sync를 실행하지 않는다.
 
 mgmt의 GitOps 저장소에서 다음을 확인한다. 출력 공유 시 인증 정보는 제외한다.

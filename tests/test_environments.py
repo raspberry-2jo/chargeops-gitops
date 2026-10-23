@@ -30,6 +30,13 @@ def test_freeze_handles_rendered_tag_and_digest_through_complete_preflight(tmp_p
     config_path = Path('chargeops-chatops/overlays/prod/kustomization.yaml')
     config = yaml.safe_load((ROOT / config_path).read_text(encoding='utf-8'))
     rendered = subprocess.check_output(['kubectl', 'kustomize', 'chargeops-chatops/overlays/prod'], cwd=ROOT, text=True, encoding='utf-8')
+    # Freeze is a pre-handover scenario. Do not let a committed, completed
+    # Rollout handover (Deployment replicas=0) remove CSMS from this fixture.
+    initial = list(yaml.safe_load_all(rendered))
+    for document in initial:
+        if document and document['kind'] == 'Deployment' and document['metadata']['name'] == 'csms':
+            document['spec']['replicas'] = 4
+    rendered = yaml.safe_dump_all(initial)
     if scenario in ['pinned_git_live_tag', 'different_repository']:
         entry = next(i for i in config['images'] if i['name'].endswith('/chargeops-csms'))
         entry['digest'] = 'sha256:' + 'a' * 64
