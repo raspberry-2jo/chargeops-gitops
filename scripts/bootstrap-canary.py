@@ -55,6 +55,8 @@ def git_clean():
     if run('git', 'branch', '--show-current') != 'main' or run('git', 'status', '--porcelain'):
         raise ValueError('Use a clean GitOps main checkout; commit existing baseline edits first')
     run('git', 'pull', '--ff-only', 'origin', 'main')
+    if run('git', 'rev-list', '--count', 'origin/main..HEAD') != '0':
+        raise ValueError('Local commits are not published to origin/main. Review git log origin/main..HEAD, then git push origin HEAD:main before retrying; no cluster changes were made')
 
 
 def commit_runtime(message):
@@ -217,6 +219,24 @@ def install_controller():
     run('kubectl', 'apply', '-f', str(ROOT / 'chargeops-chatops/argocd/canary-rbac.yaml'))
 
 
+def sync_failure(state):
+    # Inspect messages only to select fixed hints. Never echo arbitrary API
+    # error text, which can include rendered manifests or environment values.
+    results = state.get('syncResult', {}).get('resources', [])
+    message = '\n'.join([state.get('message', '')] + [r.get('message', '') for r in results]).lower()
+    if any(text in message for text in ['unable to resolve', 'failed to resolve', 'unknown revision', 'not our ref', 'bad revision']):
+        hint = 'Git revision could not be resolved; check that the commit is pushed and Argo CD can read the repository'
+    elif 'immutable' in message:
+        hint = 'An immutable resource field was rejected; inspect failed resource messages before changing selectors or storage settings'
+    elif any(text in message for text in ['manifest generation', 'failed to generate manifest', 'kustomize build']):
+        hint = 'Manifest generation failed; inspect the Argo CD repository/render error'
+    elif any(text in message for text in ['unauthorized', 'authentication', 'permission denied', 'forbidden']):
+        hint = 'Repository or Kubernetes access was rejected; inspect Argo CD credentials and permissions'
+    else:
+        hint = 'Inspect Application status.operationState.message and status.operationState.syncResult.resources for the exact cause'
+    return 'Argo CD bootstrap Sync failed. ' + hint + '; existing resources were not deleted'
+
+
 def sync(revision, resources):
     app = get('-n', 'argocd', 'get', 'application', APPLICATION)
     if app['spec']['source']['path'] != CANARY or app['spec'].get('syncPolicy', {}).get('automated'):
@@ -236,7 +256,7 @@ def sync(revision, resources):
             if state.get('phase') == 'Succeeded':
                 return
             if state.get('phase') in ['Failed', 'Error']:
-                raise ValueError('Argo CD bootstrap Sync failed; existing resources were not deleted')
+                raise ValueError(sync_failure(state))
         time.sleep(5)
     raise ValueError('Argo CD bootstrap Sync timed out; do not scale down the existing Deployment')
 
