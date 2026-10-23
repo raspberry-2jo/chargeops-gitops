@@ -184,12 +184,12 @@ def wait_baseline(image):
     raise ValueError('Baseline Rollout is not healthy; existing Deployment was not scaled down')
 
 
-def create_kubeconfig(duration):
+def create_kubeconfig(duration='unlimited'):
     helper = module('prepare-dev-kubeconfig')
     helper.ACCOUNT = 'jenkins-canary'
     source = get('config', 'view', '--raw', '--minify', '--flatten')
     config = helper.make_config(source['clusters'][0]['cluster'], 'validation-only')
-    token = run('kubectl', '-n', 'ops', 'create', 'token', helper.ACCOUNT, '--duration=' + duration)
+    token = helper.service_account_token('ops', helper.ACCOUNT, duration)
     config['users'][0]['user']['token'] = token
     config['contexts'][0]['name'] = config['current-context'] = 'chargeops-canary'
     config['contexts'][0]['context']['namespace'] = 'ops'
@@ -206,7 +206,11 @@ def create_kubeconfig(duration):
     output = Path.home() / '.chargeops-jenkins/canary-kubeconfig.yaml'
     helper.write_config(config, output, verify)
     print('Created restricted kubeconfig: ' + str(output), flush=True)
-    print('Upload as Jenkins Secret file ID chargeops-canary-kubeconfig; requested lifetime ' + duration)
+    if duration == 'unlimited':
+        print('Token expiration: none. Reuses Secret ops/jenkins-canary-token; deleting the Secret or ServiceAccount revokes it.')
+    else:
+        helper.print_token_expiry(token, duration)
+    print('Upload as Jenkins Secret file ID chargeops-canary-kubeconfig; replace the previous uploaded file once')
 
 
 def baseline_analysis():
@@ -303,11 +307,11 @@ def bootstrap(duration):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--duration', default='24h')
+    parser.add_argument('--duration', default='unlimited', help='Default: non-expiring Secret token; optional requested lifetime, for example 24h')
     parser.add_argument('--credential-only', action='store_true', help='Renew only the restricted kubeconfig after initial bootstrap')
     parser.add_argument('--controller-only', action='store_true', help='Install the controller/RBAC without changing the ops Application or CSMS')
     args = parser.parse_args()
-    if not re.fullmatch(r'[1-9][0-9]*(s|m|h)', args.duration):
+    if args.duration != 'unlimited' and not re.fullmatch(r'[1-9][0-9]*(s|m|h)', args.duration):
         raise ValueError('Invalid requested token duration')
     if args.credential_only and args.controller_only:
         raise ValueError('Choose only one bootstrap mode')

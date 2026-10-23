@@ -106,7 +106,9 @@ GUI에서 `chargeops-dev`가 신규 Dev, 기존 `chargeops-chatops-dev`가 Ops�
 
 검증 kubeconfig는 `dev/jenkins-dev-verifier` ServiceAccount 또는 동등한 제한 권한을 사용한다. Dev Deployment·Pod·ConfigMap 읽기, 검증 Job 생성/조회, 로그 읽기와 `argocd/chargeops-dev` 단일 Application 읽기만 허용한다. Ops 리소스 쓰기·Secret 읽기는 부여하지 않는다. ServiceAccount 토큰의 유효 기간과 Jenkins credential 갱신은 운영 정책에 맞춘다. 기본 사용자 kubeconfig나 cluster-admin kubeconfig를 검증 credential로 등록하지 않는다.
 
-mgmt의 관리자 컨텍스트에서 `.ci-venv/bin/python scripts/prepare-dev-kubeconfig.py`를 실행하면 Namespace·검증 계정/RBAC만 준비하고 권한을 검사한 뒤 `~/.chargeops-jenkins/dev-kubeconfig.yaml`을 권한 600으로 생성한다. 앱을 배포하거나 Ops 워크로드를 변경하지 않는다. 이 파일을 브라우저 PC로 안전하게 전송한 뒤 Jenkins `Secret file` 타입, ID `chargeops-dev-kubeconfig`로 등록한다. 토큰은 기본 24시간을 요청하며 API 서버가 제한할 수 있다. 출력되는 실제 만료 시각 전에 같은 명령으로 재생성하고 Jenkins 파일을 교체한다. 필요한 유효기간은 `--duration 168h` 등으로 요청할 수 있으며, 영구 토큰을 생성하지 않는다. 파일 내용이나 인증 값은 대화·Git에 넣지 않는다.
+mgmt의 관리자 컨텍스트에서 `.ci-venv/bin/python scripts/prepare-dev-kubeconfig.py`를 실행하면 Namespace·검증 계정/RBAC와 수동 ServiceAccount 토큰 Secret을 준비하고 권한을 검사한 뒤 `~/.chargeops-jenkins/dev-kubeconfig.yaml`을 권한 600으로 생성한다. 앱을 배포하거나 Ops 워크로드를 변경하지 않는다. 이 파일을 브라우저 PC로 안전하게 전송한 뒤 Jenkins `Secret file` 타입, ID `chargeops-dev-kubeconfig`로 등록한다. 기본 토큰은 만료 시간이 없으며 `dev/jenkins-dev-verifier-token` Secret에 보관한다. 재실행 시 같은 계정·UID의 토큰을 재사용한다. 기존 24시간 토큰은 자동으로 변경되지 않으므로 스크립트를 한 번 재실행하고 Jenkins 파일을 교체한다. 필요하면 `--duration 24h`로 만료형 토큰을 명시적으로 요청할 수 있다. 파일 내용이나 인증 값은 대화·Git에 넣지 않는다.
+
+무기한 토큰은 Secret 또는 ServiceAccount를 삭제하거나 서버에서 무효화하면 사용할 수 없다. 토큰을 새로 발급하려면 관리자 컨텍스트에서 `kubectl -n dev delete secret jenkins-dev-verifier-token` 후 생성 스크립트를 재실행하고 Jenkins 파일을 교체한다. 이 작업은 기존 토큰을 사용하는 인증을 끊으므로 교체할 때만 수행한다. 실제 토큰 데이터가 들어간 Secret YAML은 Git에 저장하지 않는다. [Kubernetes의 수동 장기 토큰 방식](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#manually-create-a-long-lived-api-token-for-a-serviceaccount)을 사용한다.
 
 승인자는 Jenkinsfile의 `submitter: 'admin'`이다. Job/Replay/Configure 권한과 저장소 쓰기 권한을 제한해야 승인 우회를 줄일 수 있다. Git 서버의 branch protection, Argo CD 사용자 RBAC, Jenkins 사용자·credential 생성은 이 저장소 변경만으로 적용되지 않는다. 관리자 권한자는 정책을 우회할 수 있다.
 

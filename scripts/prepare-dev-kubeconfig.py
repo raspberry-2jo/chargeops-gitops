@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import time
 
 import yaml
 
@@ -50,6 +51,56 @@ def make_config(cluster, token):
             'current-context': 'chargeops-dev'}
 
 
+def service_account_token(namespace, account, duration='unlimited'):
+    """Reuse a manually created SA token Secret; never add it to SA.secrets.
+
+    The Secret holds the credential in Kubernetes, never in tracked YAML.
+    Deliberately leave SA.secrets untouched so this is not an auto-generated
+    legacy token subject to automatic unused-token cleanup.
+    """
+    if duration != 'unlimited':
+        return kubectl('-n', namespace, 'create', 'token', account, '--duration=' + duration)
+    name = account + '-token'
+    service_account = json.loads(kubectl('-n', namespace, 'get', 'serviceaccount', account, '-o', 'json'))
+    uid = service_account['metadata']['uid']
+    raw = kubectl('-n', namespace, 'get', 'secret', name, '--ignore-not-found', '-o', 'json')
+    secret = json.loads(raw) if raw else None
+    if secret is None:
+        document = {'apiVersion': 'v1', 'kind': 'Secret',
+                    'metadata': {'name': name, 'namespace': namespace,
+                                 'annotations': {'kubernetes.io/service-account.name': account}},
+                    'type': 'kubernetes.io/service-account-token'}
+        kubectl('create', '-f', '-', payload=json.dumps(document))
+    for attempt in range(31):
+        if secret is not None:
+            annotations = secret['metadata'].get('annotations', {})
+            if (secret.get('type') != 'kubernetes.io/service-account-token'
+                    or annotations.get('kubernetes.io/service-account.name') != account
+                    or annotations.get('kubernetes.io/service-account.uid', uid) != uid):
+                raise ValueError('Existing token Secret belongs to another identity; it was not modified')
+            if secret['metadata'].get('labels', {}).get('kubernetes.io/legacy-token-invalid-since'):
+                raise ValueError('Existing token Secret was invalidated; replace that Secret and regenerate the Jenkins file')
+            encoded = secret.get('data', {}).get('token')
+            if encoded:
+                try:
+                    token = base64.b64decode(encoded, validate=True).decode('utf-8')
+                    parts = token.split('.')
+                    if len(parts) != 3:
+                        raise ValueError()
+                    claims = json.loads(base64.urlsafe_b64decode(parts[1] + '=' * (-len(parts[1]) % 4)))
+                except (ValueError, UnicodeError, IndexError):
+                    raise ValueError('Token Secret does not contain a valid service account JWT') from None
+                if ('exp' in claims or claims.get('sub') != f'system:serviceaccount:{namespace}:{account}'
+                        or annotations.get('kubernetes.io/service-account.uid') != uid):
+                    raise ValueError('Token Secret is expiring or belongs to another identity')
+                return token
+        if attempt == 30:
+            break
+        time.sleep(2)
+        secret = json.loads(kubectl('-n', namespace, 'get', 'secret', name, '-o', 'json'))
+    raise ValueError('Service account token controller did not populate the Secret within sixty seconds')
+
+
 def verify_permissions(path):
     probes = [(['get', 'deployments', '-n', 'dev'], 'yes'),
               (['create', 'jobs', '-n', 'dev'], 'yes'),
@@ -78,31 +129,38 @@ def write_config(config, output, verifier=verify_permissions):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--duration', default='24h', help='Requested token lifetime; the API server may cap it')
+    parser.add_argument('--duration', default='unlimited', help='Default: non-expiring Secret token. Optional: a requested bounded lifetime such as 24h')
     args = parser.parse_args()
-    if not re.fullmatch(r'[1-9][0-9]*(s|m|h)', args.duration):
-        raise ValueError('Duration must be a positive number followed by s, m or h')
+    if args.duration != 'unlimited' and not re.fullmatch(r'[1-9][0-9]*(s|m|h)', args.duration):
+        raise ValueError('Duration must be unlimited or a positive number followed by s, m or h')
     source = json.loads(kubectl('config', 'view', '--raw', '--minify', '--flatten', '-o', 'json'))
     if len(source.get('clusters', [])) != 1:
         raise ValueError('Select an administrator Kubernetes context first')
     cluster = source['clusters'][0]['cluster']
     make_config(cluster, 'validation-only')
     prepare_rbac()
-    token = kubectl('-n', 'dev', 'create', 'token', ACCOUNT, '--duration=' + args.duration)
+    token = service_account_token('dev', ACCOUNT, args.duration)
     if not token:
         raise ValueError('The API server did not issue a token')
     output = Path.home() / '.chargeops-jenkins/dev-kubeconfig.yaml'
     write_config(make_config(cluster, token), output)
     print(f'Created: {output}')
     print('Verified: dev deployment reads/jobs allowed; ops secrets/deployment writes denied.')
+    if args.duration == 'unlimited':
+        print('Token expiration: none. Reuses Secret dev/' + ACCOUNT + '-token; deleting the Secret or ServiceAccount revokes it.')
+    else:
+        print_token_expiry(token, args.duration)
+    print('Upload this file to Jenkins Secret file credential ID: chargeops-dev-kubeconfig')
+    print('No token or kubeconfig contents were printed. Replace the previously uploaded Jenkins file once to switch token types.')
+
+
+def print_token_expiry(token, duration):
     try:
         payload = token.split('.')[1]
         expiry = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))['exp']
         print('Token expires: ' + datetime.fromtimestamp(expiry, timezone.utc).isoformat())
     except (ValueError, IndexError, KeyError):
-        print('Requested token lifetime: ' + args.duration + '; server policy determines actual expiry.')
-    print('Upload this file to Jenkins Secret file credential ID: chargeops-dev-kubeconfig')
-    print('No token or kubeconfig contents were printed. Rerun and replace the Jenkins file before expiry.')
+        print('Requested token lifetime: ' + duration + '; server policy determines actual expiry.')
 
 
 if __name__ == '__main__':

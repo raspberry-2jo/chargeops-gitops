@@ -98,3 +98,21 @@ def test_rehearsal_is_self_contained_and_python_commands_compile():
     compile(module.SERVER, '<rehearsal-server>', 'exec')
     compile(module.PROBE, '<rehearsal-probe>', 'exec')
     assert 'DB_DSN' not in json.dumps(docs)
+
+
+def test_canary_kubeconfig_uses_nonexpiring_shared_secret_helper(monkeypatch, capsys):
+    helper = bootstrap.module('prepare-dev-kubeconfig')
+    calls, configs = [], []
+    monkeypatch.setattr(helper, 'service_account_token', lambda namespace, account, duration: calls.append(
+        (namespace, account, duration)) or 'test-only-canary-token')
+    monkeypatch.setattr(helper, 'write_config', lambda config, output, verifier: configs.append(config))
+    monkeypatch.setattr(bootstrap, 'module', lambda name: helper)
+    monkeypatch.setattr(bootstrap, 'get', lambda *a: {'clusters': [{'cluster': {
+        'server': 'https://api.invalid', 'certificate-authority-data': 'public-ca'}}]})
+    bootstrap.create_kubeconfig()
+    assert calls == [('ops', 'jenkins-canary', 'unlimited')]
+    assert configs[0]['contexts'][0]['context']['namespace'] == 'ops'
+    assert configs[0]['users'][0]['name'] == 'jenkins-canary'
+    output = capsys.readouterr().out
+    assert 'Token expiration: none' in output
+    assert 'test-only-canary-token' not in output

@@ -82,12 +82,14 @@ git pull --ff-only origin main
 부분 실패 시 기존 리소스를 삭제하지 말고 오류 원인을 해결한 후 같은 스크립트를 재실행한다. 생성한 runtime patch를 재사용한다. kubeconfig만 갱신할 때는 다음 명령을 사용한다.
 
 ```bash
-.ci-venv/bin/python scripts/bootstrap-canary.py --credential-only --duration 24h
+.ci-venv/bin/python scripts/bootstrap-canary.py --credential-only
 ```
 
 ## Jenkins에서 활성화
 
-생성한 `canary-kubeconfig.yaml`을 기존 Dev 파일과 같은 방식으로 Windows에 전송하고 Jenkins **Secret file**, ID **`chargeops-canary-kubeconfig`**로 등록한다. 기본 요청 수명은 24시간이며 API 서버가 제한할 수 있다. 만료 전에 `--credential-only`로 갱신해 교체한다. Dev kubeconfig는 기존 `chargeops-dev-kubeconfig`를 계속 사용한다.
+생성한 `canary-kubeconfig.yaml`을 기존 Dev 파일과 같은 방식으로 Windows에 전송하고 Jenkins **Secret file**, ID **`chargeops-canary-kubeconfig`**로 등록한다. 기본 토큰은 만료 시간이 없으며 기존 `ops/jenkins-canary-token` Secret을 재사용한다. 기존 24시간 토큰으로 등록했다면 `--credential-only`를 한 번 실행하고 Jenkins 파일을 교체한다. 이 옵션은 토큰과 파일만 준비하며 운영 앱 전환이나 Sync를 실행하지 않는다. Dev kubeconfig는 기존 `chargeops-dev-kubeconfig`를 계속 사용한다.
+
+명시적으로 만료형 토큰이 필요한 경우에만 `--duration 24h`를 추가한다. 무기한 토큰도 Secret 또는 ServiceAccount를 삭제하거나 서버에서 무효화하면 사용할 수 없다. Canary 토큰을 새로 발급하려면 관리자 컨텍스트에서 `kubectl -n ops delete secret jenkins-canary-token` 후 `--credential-only`를 실행하고 Jenkins 파일을 교체한다. 실제 Secret 데이터와 kubeconfig는 Git에 저장하지 않는다.
 
 Canary 계정은 Ops Secret 읽기·Deployment 직접 수정 권한이 없다. CSMS `Rollout/status` abort와 기존 Ops Application의 patch 권한이 있다. Kubernetes RBAC는 Application patch의 특정 필드만 제한할 수 없으므로 Jenkins Job/Replay 및 해당 credential 사용 권한은 승인 담당자에게 제한한다.
 
