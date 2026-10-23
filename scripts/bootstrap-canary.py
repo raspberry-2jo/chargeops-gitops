@@ -29,10 +29,42 @@ SAFE_ENV = {'DB_POOL', 'POD_IP', 'PEERS_DNS', 'DRAIN_SECONDS', 'REQUIRE_CN',
             'PYTHONUNBUFFERED', 'PYTHONDONTWRITEBYTECODE', 'TZ', 'PORT', 'HOST'}
 
 
+class CommandFailure(ValueError, RuntimeError):
+    """A fixed, printable diagnostic without child output or command payloads."""
+
+
+def command_step(args):
+    verbs = {'git': {'branch', 'status', 'pull', 'fetch', 'rev-list', 'rev-parse', 'diff', 'ls-files', 'add', 'commit', 'push'},
+             'kubectl': {'get', 'apply', 'patch', 'wait', 'rollout', 'kustomize', 'create', 'config'},
+             'docker': {'run', 'pull', 'tag', 'push'}}
+    executable = args[0] if args[0] in verbs else 'external command'
+    verb = next((arg for arg in args[1:] if arg in verbs.get(executable, set())), '')
+    return (executable + ' ' + verb).strip()
+
+
+def command_hint(stderr):
+    error = (stderr or '').lower()
+    if any(s in error for s in ['authentication failed', 'could not read username', 'terminal prompts disabled', 'invalid username or token']):
+        return 'Git authentication failed; verify the GitHub username and repository-write PAT'
+    if any(s in error for s in ['not possible to fast-forward', 'divergent branches', 'non-fast-forward', '[rejected]']):
+        return 'Git histories differ; inspect git status and git log --oneline --left-right HEAD...origin/main; do not force-push or reset'
+    if any(s in error for s in ['x509', 'certificate verify failed', 'certificate signed by unknown authority', 'ssl certificate problem']):
+        return 'TLS certificate verification failed; check the trusted CA and endpoint'
+    if any(s in error for s in ['unauthorized', 'forbidden', 'permission denied']):
+        return 'Access was rejected; check the relevant credentials and permissions'
+    if any(s in error for s in ['could not resolve', 'no such host', 'connection refused', 'unable to connect', 'timed out']):
+        return 'Endpoint connection failed; check DNS, connectivity and service availability'
+    return 'Inspect this command locally for its exact error; child output and arguments are withheld'
+
+
 def run(*args, payload=None):
-    result = subprocess.run(args, input=payload, text=True, capture_output=True, cwd=ROOT)
+    step = command_step(args)
+    try:
+        result = subprocess.run(args, input=payload, text=True, capture_output=True, cwd=ROOT)
+    except OSError:
+        raise CommandFailure(step + ' could not start; check executable availability and working directory') from None
     if result.returncode:
-        raise RuntimeError(args[0] + ' failed; check connectivity and permissions; child output withheld')
+        raise CommandFailure(step + ' failed (exit ' + str(result.returncode) + '): ' + command_hint(result.stderr))
     return result.stdout.strip()
 
 
@@ -52,9 +84,12 @@ def render(path):
 
 
 def git_clean():
+    print('Checking clean main checkout and fetching GitOps updates', flush=True)
     if run('git', 'branch', '--show-current') != 'main' or run('git', 'status', '--porcelain'):
         raise ValueError('Use a clean GitOps main checkout; commit existing baseline edits first')
     run('git', 'pull', '--ff-only', 'origin', 'main')
+    if run('git', 'rev-list', '--count', 'origin/main..HEAD') != '0':
+        raise ValueError('Local commits are not published to origin/main. Review git log origin/main..HEAD, then git push origin HEAD:main before retrying; no cluster changes were made')
 
 
 def commit_runtime(message):
@@ -217,6 +252,24 @@ def install_controller():
     run('kubectl', 'apply', '-f', str(ROOT / 'chargeops-chatops/argocd/canary-rbac.yaml'))
 
 
+def sync_failure(state):
+    # Inspect messages only to select fixed hints. Never echo arbitrary API
+    # error text, which can include rendered manifests or environment values.
+    results = state.get('syncResult', {}).get('resources', [])
+    message = '\n'.join([state.get('message', '')] + [r.get('message', '') for r in results]).lower()
+    if any(text in message for text in ['unable to resolve', 'failed to resolve', 'unknown revision', 'not our ref', 'bad revision']):
+        hint = 'Git revision could not be resolved; check that the commit is pushed and Argo CD can read the repository'
+    elif 'immutable' in message:
+        hint = 'An immutable resource field was rejected; inspect failed resource messages before changing selectors or storage settings'
+    elif any(text in message for text in ['manifest generation', 'failed to generate manifest', 'kustomize build']):
+        hint = 'Manifest generation failed; inspect the Argo CD repository/render error'
+    elif any(text in message for text in ['unauthorized', 'authentication', 'permission denied', 'forbidden']):
+        hint = 'Repository or Kubernetes access was rejected; inspect Argo CD credentials and permissions'
+    else:
+        hint = 'Inspect Application status.operationState.message and status.operationState.syncResult.resources for the exact cause'
+    return 'Argo CD bootstrap Sync failed. ' + hint + '; existing resources were not deleted'
+
+
 def sync(revision, resources):
     app = get('-n', 'argocd', 'get', 'application', APPLICATION)
     if app['spec']['source']['path'] != CANARY or app['spec'].get('syncPolicy', {}).get('automated'):
@@ -236,7 +289,7 @@ def sync(revision, resources):
             if state.get('phase') == 'Succeeded':
                 return
             if state.get('phase') in ['Failed', 'Error']:
-                raise ValueError('Argo CD bootstrap Sync failed; existing resources were not deleted')
+                raise ValueError(sync_failure(state))
         time.sleep(5)
     raise ValueError('Argo CD bootstrap Sync timed out; do not scale down the existing Deployment')
 
