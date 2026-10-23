@@ -17,7 +17,7 @@ images:
   digest: sha256:8137664a6dda4cbb20065c839d98f80832d0fb5a5feaeb7dd2bc5e40127757ba
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  digest: sha256:32af39b5140bdef430c2808d8a9b160d8b92024d49d052585e3b4fe12cebe691
+  digest: sha256:d8143a1847c6fd49adde0f91b0acf0e67723cd863957fe733c82c3e22c521e67
 - name: registry.chargeops.lab:5000/chargeops/chargeops-notifier
   newName: registry.chargeops.lab:5000/chargeops/chargeops-notifier
   digest: sha256:041f44071b1ab34b30705484afea3cdce2ec3a2e7c20e6fd0fffedb9776e8ac9
