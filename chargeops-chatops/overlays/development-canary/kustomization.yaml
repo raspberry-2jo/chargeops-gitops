@@ -2,19 +2,23 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: dev
 resources:
-  - ../development
-  - rollout.yaml
-  - services.yaml
-  - analysis.yaml
-  - monitoring.yaml
-  - probe-rbac.yaml
+- ../development
+- rollout.yaml
+- services.yaml
+- analysis.yaml
+- monitoring.yaml
+- probe-rbac.yaml
 patches:
-  - path: deployment-reference.yaml
-  - path: verifier-rbac.yaml
+- path: deployment-reference.yaml
+- path: verifier-rbac.yaml
 configMapGenerator:
-  - name: csms-dev-canary-probe
-    files: [probe.py, probe_metrics.py]
+- name: csms-dev-canary-probe
+  files:
+  - probe.py
+  - probe_metrics.py
 generatorOptions:
   disableNameSuffixHash: true
-# Initially inherit the existing Dev image. Jenkins creates this overlay's own
-# pinned image override on the first Canary delivery.
+images:
+- name: registry.chargeops.lab:5000/chargeops/chargeops-csms
+  newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
+  digest: sha256:71fd829b1374dbd97465e9ebc72dd5297bf3768f3c9fa278fe618089bab90333
