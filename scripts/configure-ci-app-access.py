@@ -52,8 +52,8 @@ def configure(dev_name, ops_name):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dev-application', default='chargeops-chatops-dev')
-    parser.add_argument('--ops-application', default='chargeops-chatops')
+    parser.add_argument('--dev-application', default='chargeops-dev')
+    parser.add_argument('--ops-application', default='chargeops-chatops-dev')
     args = parser.parse_args()
     try:
         configure(args.dev_application, args.ops_application)
