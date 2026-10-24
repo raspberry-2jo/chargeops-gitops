@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: csms-dev
+spec:
+  namespaceSelector:
+    matchNames:
+      - dev
+  selector:
+    matchLabels:
+      chargeops.io/metrics: csms-dev
+  endpoints:
+    - port: metrics
+      interval: 5s
+      scrapeTimeout: 3s
+      honorLabels: false

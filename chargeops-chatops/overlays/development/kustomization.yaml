@@ -10,8 +10,11 @@ resources:
 - limitrange.yaml
 - networkpolicy.yaml
 - rbac.yaml
+- metrics-servicemonitor.yaml
+- metrics-networkpolicy.yaml
 patches:
 - path: csms-patch.yaml
+- path: metrics-service-patch.yaml
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
