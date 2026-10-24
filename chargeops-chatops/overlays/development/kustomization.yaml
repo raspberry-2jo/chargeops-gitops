@@ -15,4 +15,4 @@ patches:
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  digest: sha256:1bbd4d5fb94453696023ec5528370cc77d2b651bf00d1901013d92e98c12c71d
+  digest: sha256:663f49ca1931e4a59d392472412d2138d40f0a89910f56e27477c0ee503e5bba
