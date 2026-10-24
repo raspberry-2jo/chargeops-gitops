@@ -136,11 +136,19 @@ def comparable_template(template):
     """Ignore only standard API defaults, retaining code/env/volumes/placement."""
     result = copy.deepcopy(template)
     result['metadata'].pop('creationTimestamp', None)
-    defaults = {'restartPolicy': 'Always', 'dnsPolicy': 'ClusterFirst', 'schedulerName': 'default-scheduler'}
+    defaults = {'restartPolicy': 'Always', 'dnsPolicy': 'ClusterFirst', 'schedulerName': 'default-scheduler',
+                'enableServiceLinks': True}
     for key, value in defaults.items():
         if result['spec'].get(key) == value:
             result['spec'].pop(key)
     for container in result['spec']['containers']:
+        for port in container.get('ports', []):
+            if port.get('protocol') == 'TCP':
+                port.pop('protocol')
+        for env in container.get('env', []):
+            ref = env.get('valueFrom', {}).get('fieldRef', {})
+            if ref.get('apiVersion') == 'v1':
+                ref.pop('apiVersion')
         for key, value in [('terminationMessagePath', '/dev/termination-log'), ('terminationMessagePolicy', 'File')]:
             if container.get(key) == value:
                 container.pop(key)

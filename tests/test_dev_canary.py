@@ -109,7 +109,12 @@ def test_handover_ignores_api_defaults_but_not_runtime_changes():
     template = next(d for d in docs('development') if d['kind'] == 'Deployment')['spec']['template']
     live = copy.deepcopy(template)
     live['metadata']['creationTimestamp'] = None
-    live['spec'].update(restartPolicy='Always', dnsPolicy='ClusterFirst', schedulerName='default-scheduler')
+    live['spec'].update(restartPolicy='Always', dnsPolicy='ClusterFirst', schedulerName='default-scheduler', enableServiceLinks=True)
+    for port in live['spec']['containers'][0].get('ports', []):
+        port['protocol'] = 'TCP'
+    for env in live['spec']['containers'][0].get('env', []):
+        if 'fieldRef' in env.get('valueFrom', {}):
+            env['valueFrom']['fieldRef']['apiVersion'] = 'v1'
     live['spec']['containers'][0].update(terminationMessagePath='/dev/termination-log', terminationMessagePolicy='File')
     live['spec']['containers'][0]['readinessProbe'].update(timeoutSeconds=1, successThreshold=1, failureThreshold=3)
     assert bootstrap.comparable_template(live) == bootstrap.comparable_template(template)
