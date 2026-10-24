@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: csms-dev-availability
+spec:
+  args:
+    - name: check-stable
+    - name: dev-error-every
+      value: "0"
+  metrics:
+    - name: availability-error-latency-restarts
+      count: 1
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 240
+            ttlSecondsAfterFinished: 86400
+            template:
+              metadata:
+                labels:
+                  chargeops.io/role: dev-canary-probe
+              spec:
+                serviceAccountName: csms-dev-canary-probe
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 10001
+                  runAsGroup: 10001
+                containers:
+                  - name: probe
+                    image: registry.chargeops.lab:5000/chargeops/python:3.13-slim@sha256:d879ed88565a7a3c614b980b369d4a5025a9d057b71f93d09fc6d0b2ca823a18
+                    command: [python, /probe/probe.py]
+                    env:
+                      - name: DEV_ERROR_EVERY
+                        value: "{{args.dev-error-every}}"
+                      - name: PROBE_METRICS
+                        value: "true"
+                      - name: CHECK_STABLE
+                        value: "{{args.check-stable}}"
+                    ports:
+                      - name: probe-metrics
+                        containerPort: 9110
+                    volumeMounts:
+                      - name: probe
+                        mountPath: /probe
+                        readOnly: true
+                    resources:
+                      requests:
+                        cpu: 50m
+                        memory: 32Mi
+                      limits:
+                        cpu: 250m
+                        memory: 128Mi
+                volumes:
+                  - name: probe
+                    configMap:
+                      name: csms-dev-canary-probe

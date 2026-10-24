@@ -1,0 +1,18 @@
+# Opt-in replacement for application-dev.yaml, not a second Application.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chargeops-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/raspberry-2jo/chargeops-gitops.git
+    targetRevision: main
+    path: chargeops-chatops/overlays/development-canary
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated: {prune: false, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

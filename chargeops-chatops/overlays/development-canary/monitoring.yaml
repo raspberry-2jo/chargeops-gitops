@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: csms-dev-canary-probe-metrics
+  labels: {chargeops.io/metrics: csms-dev-canary-probe}
+spec:
+  selector: {chargeops.io/role: dev-canary-probe}
+  ports:
+    - {name: probe-metrics, port: 9110, targetPort: probe-metrics}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: csms-dev-canary-probe
+spec:
+  namespaceSelector: {matchNames: [dev]}
+  selector:
+    matchLabels: {chargeops.io/metrics: csms-dev-canary-probe}
+  endpoints:
+    - {port: probe-metrics, path: /metrics, interval: 5s, scrapeTimeout: 3s}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: csms-dev-canary-probe
+spec:
+  podSelector:
+    matchLabels: {chargeops.io/role: dev-canary-probe}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+      ports:
+        - {port: 9110, protocol: TCP}
+  # Existing development-boundary already permits same-namespace HTTP and DNS.
+  # Only the probe SA needs Kubernetes API TLS egress for read-only Pod checks.
+  egress:
+    - ports:
+        - {port: 443, protocol: TCP}
+        - {port: 6443, protocol: TCP}

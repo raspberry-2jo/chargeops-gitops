@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: csms
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    chargeops.io/dev-error-every: "0"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
+  progressDeadlineAbort: true
+  workloadRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: csms
+    scaleDown: never
+  selector:
+    matchLabels: {app: csms}
+  strategy:
+    canary:
+      maxSurge: 1
+      maxUnavailable: 0
+      stableService: csms-stable
+      canaryService: csms-canary
+      steps:
+        - setWeight: 50
+        - analysis:
+            templates:
+              - templateName: csms-dev-availability
+            args:
+              - {name: check-stable, value: "true"}
+              - name: dev-error-every
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.annotations['chargeops.io/dev-error-every']
+        - setWeight: 100
+        - analysis:
+            templates:
+              - templateName: csms-dev-availability
+            args:
+              - {name: check-stable, value: "false"}
+              - name: dev-error-every
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.annotations['chargeops.io/dev-error-every']

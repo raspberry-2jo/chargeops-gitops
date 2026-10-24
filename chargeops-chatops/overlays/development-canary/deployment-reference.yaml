@@ -1,0 +1,7 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csms
+spec:
+  # Template source only after the controlled handover; Rollout owns the Pods.
+  replicas: 0
