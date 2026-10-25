@@ -74,7 +74,7 @@ def evaluate(results):
     return metrics
 
 
-def main():
+def main(observer=None):
     names = ['service', 'canary']
     if os.environ.get('CHECK_STABLE', 'true') == 'true':
         names.append('stable')
@@ -82,7 +82,18 @@ def main():
             'canary': 'http://csms-canary.ops.svc.cluster.local:8000/healthz',
             'stable': 'http://csms-stable.ops.svc.cluster.local:8000/healthz'}
     results = {name: [] for name in names}
-    previous = check_pods(pods(), {})
+    def observe_pods(previous):
+        items = pods()
+        try:
+            current = check_pods(items, previous)
+        except ValueError:
+            if observer:
+                observer.pods(items, False)
+            raise
+        if observer:
+            observer.pods(items, True)
+        return current
+    previous = observe_pods({})
     # One new HTTP connection per target per second. No concurrency/load flood.
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(names)) as executor:
         for i in range(SAMPLES):
@@ -90,18 +101,44 @@ def main():
             pending = {name: executor.submit(request, urls[name]) for name in names}
             for name, future in pending.items():
                 results[name].append(future.result())
+            if observer:
+                observer.record(results)
             if i % 10 == 0 or i == SAMPLES - 1:
-                previous = check_pods(pods(), previous)
+                previous = observe_pods(previous)
             time.sleep(max(0, 1 - (time.monotonic() - tick)))
     print(json.dumps({'result': 'passed', 'http': evaluate(results)}, sort_keys=True))
 
 
-if __name__ == '__main__':
+def run():
+    observer = server = None
+    if os.environ.get('PROBE_METRICS') == 'true':
+        try:
+            from probe_metrics import Observer, serve
+            observer = Observer(MAX_ERROR_RATE, MAX_P95_SECONDS, MAX_RELATIVE_LATENCY, MIN_READY_PODS, SAMPLES)
+            server = serve(observer)
+        except Exception:
+            observer = None
+            print('Probe metrics unavailable; existing availability checks continue', flush=True)
+    code = 0
     try:
-        main()
+        main(observer)
     except ValueError as error:
         print('Analysis failed: ' + str(error))
-        raise SystemExit(1)
+        code = 1
     except Exception:
         print('Analysis failed: HTTP or Kubernetes observation was unavailable; no response bodies printed')
-        raise SystemExit(1)
+        code = 1
+    finally:
+        if observer:
+            observer.finish(code == 0)
+            # Retain the final judgement for four configured 5s scrape intervals.
+            # Best-effort telemetry does not change the existing pass/fail result.
+            time.sleep(20)
+        if server:
+            server.shutdown()
+            server.server_close()
+    return code
+
+
+if __name__ == '__main__':
+    raise SystemExit(run())

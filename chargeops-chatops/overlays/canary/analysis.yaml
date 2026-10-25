@@ -31,8 +31,13 @@ spec:
                     image: registry.chargeops.lab:5000/chargeops/python:3.13-slim@sha256:d879ed88565a7a3c614b980b369d4a5025a9d057b71f93d09fc6d0b2ca823a18
                     command: [python, /probe/probe.py]
                     env:
+                      - name: PROBE_METRICS
+                        value: "true"
                       - name: CHECK_STABLE
                         value: "{{args.check-stable}}"
+                    ports:
+                      - name: probe-metrics
+                        containerPort: 9110
                     volumeMounts:
                       - name: probe
                         mountPath: /probe

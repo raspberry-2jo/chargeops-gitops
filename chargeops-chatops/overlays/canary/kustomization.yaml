@@ -7,9 +7,11 @@ resources:
   - services.yaml
   - analysis.yaml
   - networkpolicy.yaml
+  - probe-monitoring.yaml
 configMapGenerator:
   - name: csms-canary-probe
     files:
       - probe.py
+      - probe_metrics.py
 generatorOptions:
   disableNameSuffixHash: true

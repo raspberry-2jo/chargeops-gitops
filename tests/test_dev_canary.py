@@ -40,7 +40,13 @@ def test_opt_in_does_not_modify_legacy_development_or_ops_workloads():
         assert canary[key] == value
     deployment = canary['Deployment', 'csms']
     assert deployment['spec']['replicas'] == 0
-    assert deployment['spec']['template'] == legacy['Deployment', 'csms']['spec']['template']
+    # Jenkins pins a separately verified digest in the child overlay. Preserve
+    # every runtime field while allowing that intentional image override.
+    template = copy.deepcopy(deployment['spec']['template'])
+    legacy_template = legacy['Deployment', 'csms']['spec']['template']
+    legacy_image = next(c['image'] for c in legacy_template['spec']['containers'] if c['name'] == 'csms')
+    next(c for c in template['spec']['containers'] if c['name'] == 'csms')['image'] = legacy_image
+    assert template == legacy_template
     assert all(d['metadata'].get('namespace', 'dev') == 'dev' for d in canary.values())
     r = canary['Rollout', 'csms']['spec']
     assert r['replicas'] == 2 and r['workloadRef']['scaleDown'] == 'never'

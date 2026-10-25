@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: csms-canary-probe-metrics
+  labels:
+    chargeops.io/metrics: csms-canary-probe
+spec:
+  selector:
+    chargeops.io/role: canary-probe
+  ports:
+    - name: probe-metrics
+      port: 9110
+      targetPort: probe-metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: csms-canary-probe
+spec:
+  namespaceSelector:
+    matchNames: [ops]
+  selector:
+    matchLabels:
+      chargeops.io/metrics: csms-canary-probe
+  endpoints:
+    - port: probe-metrics
+      path: /metrics
+      interval: 5s
+      scrapeTimeout: 3s
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: csms-canary-probe-metrics
+spec:
+  podSelector:
+    matchLabels:
+      chargeops.io/role: canary-probe
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9110

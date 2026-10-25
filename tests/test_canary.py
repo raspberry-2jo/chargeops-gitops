@@ -33,7 +33,8 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
     additions = set(actual) - {identity(d) for d in prod}
     assert additions == {('Rollout', 'csms'), ('AnalysisTemplate', 'csms-availability'),
                          ('Service', 'csms-stable'), ('Service', 'csms-canary'), ('ConfigMap', 'csms-canary-probe'),
-                         ('NetworkPolicy', 'csms-canary-probe')}
+                         ('NetworkPolicy', 'csms-canary-probe'), ('Service', 'csms-canary-probe-metrics'),
+                         ('ServiceMonitor', 'csms-canary-probe'), ('NetworkPolicy', 'csms-canary-probe-metrics')}
     rollout = actual['Rollout', 'csms']['spec']
     assert rollout['replicas'] == 4
     assert rollout['workloadRef']['scaleDown'] == 'never'
