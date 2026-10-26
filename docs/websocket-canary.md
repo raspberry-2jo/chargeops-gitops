@@ -7,7 +7,7 @@ Dev AnalysisTemplate에 `ocpp-websocket` Job을 추가했다. HTTP/Pod 검사와
 활성화한 OCPP 검사가 실패하면 AnalysisRun이 실패하고 기존 Jenkins 복구 경로로 이어진다.
 실서버에서 이 연속 경로를 확인한 것은 아니다. 아직 HTTP 실패 시연과 Git 복구를 각각 확인한 상태다.
 
-Ops의 검사 정책이나 CSMS Deployment/Rollout은 이번 변경에서 수정하지 않았다.
+Dev·Ops 모두 5단계 자동 gate를 연결했다. 세부 기준과 최초 계측 전환은 [5단계 기준](canary-five-level-gates.md)을 따른다.
 Dev에 새 검사 Job 하나가 추가되므로 최대 250m CPU / 128Mi 메모리 제한과 Pod 자리 하나가 더 필요하다.
 bootstrap의 여유 quota 검사도 그만큼 조정했다.
 
@@ -77,10 +77,9 @@ python3 scripts/configure-dev-ocpp.py --disable
 Git 밖의 `chargeops-websocket-overview-ko.json`을 Import한다. UID는 기존 간소화 대시보드와
 같으므로 덮어쓰기로 화면을 교체할 수 있다. 환경 dev/ops를 선택한다.
 
-실제 연결 수, 접속/종료/거부, Heartbeat, 처리 오류율/p95는 서비스 영향 관측용이다.
-이들 집계값 자체를 바로 자동 실패 조건으로 연결하지 않았다. 정상 재접속, 부족한 표본,
-외부 충전기 정지, 공유 DB 영향과 신규 버전 귀속을 먼저 확인해야 한다.
-응답 지연/연결 오류가 새 버전에서 재현되는지는 Dev 전용 기능 검사로 검증한다.
-
-Ops는 기존 HTTP/Pod 자동 판정을 유지하며 새 기능 검사는 별도 운영용 예약 ID와 정책 검토 후 적용한다.
-Ops에 새 앱 이미지를 배포하면 OCPP 처리 결과 지표도 기존 metrics ServiceMonitor로 수집된다.
+실제 연결·비정상 종료·확인 재접속, 주요 OCPP 처리량, 오류율을 Dev·Ops 자동 실패 기준에 연결했다.
+HTTP p95는 참고만 하며 Health/DB 검사 실패는 중단한다.
+Dev 전용 능동 OCPP fixture와 환경 전체 지표 gate는 별개다.
+Ops 능동 fixture는 운영용 예약 ID 없이 실행하지 않으며 실제 OCPP 트래픽과 계측으로 gate를 판정한다.
+새 계측 이미지·Prometheus 수집·통신 표본이 필요하다. 데이터 없음은 통과가 아니다.
+자세한 기준과 제한은 [5단계 기준](canary-five-level-gates.md)을 확인한다.

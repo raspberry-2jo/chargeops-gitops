@@ -10,7 +10,7 @@ from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler
 
 
 SAMPLES = 60
-MAX_ERROR_RATE = 0.01
+MAX_ERROR_RATE = 0.0
 MAX_P95_SECONDS = 1.0
 MAX_RELATIVE_LATENCY = 2.0
 MIN_READY_PODS = 2
@@ -42,7 +42,7 @@ def check_pods(items, previous):
     active = [p for p in items if not p['metadata'].get('deletionTimestamp')]
     ready = [p for p in active if any(c['type'] == 'Ready' and c['status'] == 'True'
                                     for c in p.get('status', {}).get('conditions', []))]
-    if len(ready) < MIN_READY_PODS:
+    if len(ready) < MIN_READY_PODS or len(ready) != len(active):
         raise ValueError('Fewer than two Ready CSMS Pods')
     current = {p['metadata']['uid']: sum(c.get('restartCount', 0)
                for c in p.get('status', {}).get('containerStatuses', [])) for p in active}
@@ -58,19 +58,14 @@ def summary(results):
         raise ValueError('Insufficient availability samples')
     successes = sorted(duration for ok, duration in results if ok)
     errors = sum(not ok for ok, _ in results)
-    if not successes or errors / len(results) > MAX_ERROR_RATE:
-        raise ValueError('HTTP availability error rate exceeded one percent')
+    if not successes or errors:
+        raise ValueError('Health/DB check failed')
     p95 = successes[math.ceil(0.95 * len(successes)) - 1]
-    if p95 > MAX_P95_SECONDS:
-        raise ValueError('HTTP p95 exceeded one second')
     return {'samples': len(results), 'errors': errors, 'p95_seconds': round(p95, 6)}
 
 
 def evaluate(results):
     metrics = {name: summary(values) for name, values in results.items()}
-    if 'stable' in metrics and metrics['canary']['p95_seconds'] > max(
-            0.2, metrics['stable']['p95_seconds'] * MAX_RELATIVE_LATENCY):
-        raise ValueError('Canary HTTP p95 exceeded the stable baseline')
     return metrics
 
 
@@ -107,6 +102,9 @@ def main(observer=None):
                 for name in names}
             for name, future in pending.items():
                 results[name].append(future.result())
+                if not results[name][-1][0]:
+                    if observer: observer.record(results)
+                    raise ValueError('Health/DB check failed: ' + name)
             if observer:
                 observer.record(results)
             if i % 10 == 0 or i == SAMPLES - 1:

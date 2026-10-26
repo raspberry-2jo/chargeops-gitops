@@ -54,8 +54,8 @@ def test_relative_latency_export_uses_existing_rounded_baseline_and_floor():
     o = observer()
     o.record({'stable': [(True, .010000004)] * 60, 'canary': [(True, .300000004)] * 60})
     assert value(o.render().decode(), 'relative_latency_ratio') == .3 / .2
-    with pytest.raises(ValueError, match='stable baseline'):
-        probe.evaluate({'stable': [(True, .010000004)] * 60, 'canary': [(True, .300000004)] * 60})
+    assert probe.evaluate({'stable': [(True, .010000004)] * 60,
+                           'canary': [(True, .300000004)] * 60})['canary']['p95_seconds'] == .3
 
 
 def test_missing_samples_and_missing_stable_are_not_zero_latency():

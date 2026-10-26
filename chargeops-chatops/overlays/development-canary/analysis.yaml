@@ -123,6 +123,10 @@ spec:
                 - name: probe
                   image: registry.chargeops.lab:5000/chargeops/python:3.13-slim@sha256:d879ed88565a7a3c614b980b369d4a5025a9d057b71f93d09fc6d0b2ca823a18
                   command: [python, /probe/service_gates.py]
+                  env:
+                  - name: POD_NAMESPACE
+                    valueFrom:
+                      fieldRef: {fieldPath: metadata.namespace}
                   envFrom:
                   - configMapRef: {name: csms-dev-service-gate-settings}
                   ports:

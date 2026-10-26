@@ -104,3 +104,58 @@ def test_complete_pass_uses_fixed_pre_delivery_baseline_and_observes_each_step(m
     assert set(observer.status.values()) == {1}
     assert sum(at==800 for _,at in requests) == 4
     assert requests[0][0].startswith('avg_over_time')
+
+
+def test_dev_and_ops_use_identical_gate_code_with_namespace_scoping(monkeypatch):
+    dev=ROOT/'chargeops-chatops/overlays/development-canary/service_gates.py'
+    ops=ROOT/'chargeops-chatops/overlays/canary/service_gates.py'
+    assert dev.read_bytes()==ops.read_bytes()
+    monkeypatch.setenv('POD_NAMESPACE','ops')
+    spec=importlib.util.spec_from_file_location('ops_gate',ops)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert 'namespace="ops"' in module.CONNECTIONS
+    assert 'namespace="dev"' not in module.CONNECTIONS
+
+
+def test_first_metric_migration_uses_same_received_definition_and_records_compatibility(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    now=[1000]
+    monkeypatch.setattr(g.time,'time',lambda:now[0])
+    monkeypatch.setattr(g.time,'sleep',lambda s:now.__setitem__(0,now[0]+s))
+    monkeypatch.setenv('GATE_ENABLED','true')
+    monkeypatch.setenv('GATE_BASELINE_AT','800')
+    monkeypatch.setattr(g,'canary_hash',lambda:'abc')
+    monkeypatch.setitem(sys.modules,'probe',SimpleNamespace(
+        pods=lambda:[pod(),dict(pod(),metadata={'uid':'two'})],request=lambda url:(True,0.01)))
+    current=[]
+    def query(expr,at=None):
+        if at is not None and expr in (g.THROUGHPUT,g.DISCONNECTS,g.RECONNECTS):
+            raise g.MissingData('new historical metric absent')
+        if at is None: current.append(expr)
+        if 'csms-abc-' in expr: return 0
+        if expr.startswith('avg_over_time') or expr in (g.CONNECTIONS,g.RECEIVED,g.ALL_RESULTS): return 10
+        if expr in (g.LEGACY_CLOSED,g.LEGACY_ACCEPTED,g.DISCONNECTS,g.RECONNECTS,g.ERRORS): return 0
+        raise AssertionError(expr)
+    monkeypatch.setattr(g,'query',query)
+    observer=g.Observer()
+    g.main(observer)
+    assert observer.values['baseline_compatibility_mode']==1
+    assert g.RECEIVED in current and g.THROUGHPUT not in current
+    assert set(observer.status.values())=={1}
+
+
+def test_both_environments_enable_gate_and_ops_policy_precedes_workload_sync():
+    import subprocess,yaml
+    for env, namespace in [('development-canary','dev'),('canary','ops')]:
+        docs=[d for d in yaml.safe_load_all(subprocess.check_output(['kubectl','kustomize',str(ROOT/'chargeops-chatops/overlays'/env)],text=True)) if d]
+        template=next(d for d in docs if d['kind']=='AnalysisTemplate')
+        metric=next(m for m in template['spec']['metrics'] if m['name']=='five-level-service-gate')
+        container=metric['provider']['job']['spec']['template']['spec']['containers'][0]
+        assert container['env'][0]['valueFrom']['fieldRef']['fieldPath']=='metadata.namespace'
+        settings=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']==f'csms-{namespace}-service-gate-settings')
+        assert settings['data']['GATE_ENABLED']=='true'
+        if env=='canary':
+            assert template['metadata']['annotations']['argocd.argoproj.io/sync-wave']=='-1'
+            assert settings['metadata']['annotations']['argocd.argoproj.io/sync-wave']=='-1'

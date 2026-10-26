@@ -16,7 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 OVERLAY = ROOT / 'chargeops-chatops/overlays/canary'
 ALLOWED = {('ConfigMap', 'csms-canary-probe'), ('AnalysisTemplate', 'csms-availability'),
            ('Service', 'csms-canary-probe-metrics'), ('ServiceMonitor', 'csms-canary-probe'),
-           ('NetworkPolicy', 'csms-canary-probe-metrics')}
+           ('NetworkPolicy', 'csms-canary-probe-metrics'),
+           ('ConfigMap','csms-ops-service-gate-settings'),
+           ('ServiceAccount','csms-ops-service-gate'),('Role','csms-ops-service-gate'),
+           ('RoleBinding','csms-ops-service-gate'),('NetworkPolicy','csms-ops-service-gate-egress')}
 
 
 def run(*args, payload=None):
@@ -34,7 +37,7 @@ def documents():
     docs = [d for d in yaml.safe_load_all(run('kubectl', 'kustomize', str(OVERLAY))) if d]
     selected = [d for d in docs if (d['kind'], d['metadata']['name']) in ALLOWED]
     if {(d['kind'], d['metadata']['name']) for d in selected} != ALLOWED:
-        raise RuntimeError('Expected exactly the five probe telemetry resources')
+        raise RuntimeError('Required probe and service-gate resources are incomplete')
     if any(d['metadata'].get('namespace') != 'ops' for d in selected):
         raise RuntimeError('Probe telemetry must be scoped to ops')
     return selected
@@ -76,7 +79,7 @@ def apply():
     print(run('kubectl', 'apply', '-f', '-', payload=yaml.safe_dump_all(docs)), end='')
     if workload_snapshot() != before:
         raise RuntimeError('CSMS workload changed concurrently; inspect the deployment before continuing')
-    print('Applied five Ops probe telemetry resources. CSMS Deployment/Rollout specs unchanged.')
+    print('Applied Ops probe and service-gate resources. CSMS Deployment/Rollout specs unchanged.')
 
 
 def check():
@@ -91,7 +94,7 @@ def check():
         'metadata': {'generateName': 'csms-ops-metrics-check-', 'namespace': 'ops',
                      'labels': {'chargeops.io/purpose': 'metrics-check'}},
         'spec': {'args': [{'name': 'check-stable', 'value': 'true'}],
-                 'metrics': copy.deepcopy(template['spec']['metrics'])}}
+                 'metrics': [copy.deepcopy(metric)]}}
     obj = json.loads(run('kubectl', 'create', '-f', '-', '-o', 'json', payload=json.dumps(analysis)))
     name = obj['metadata']['name']
     print('Read-only AnalysisRun: ' + name, flush=True)

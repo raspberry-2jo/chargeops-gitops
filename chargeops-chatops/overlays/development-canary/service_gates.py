@@ -1,4 +1,4 @@
-"""Dev five-level service gate using a fixed pre-delivery Prometheus baseline."""
+"""Dev/Ops five-level service gate using a fixed pre-delivery Prometheus baseline."""
 import json
 import math
 import os
@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler
 
 PROM = os.environ.get('GATE_PROMETHEUS_URL', 'http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090')
+NAMESPACE = os.environ.get('POD_NAMESPACE', 'dev')
 TRANSPORT = build_opener(ProxyHandler({}))
 
 
@@ -48,16 +49,19 @@ def query(expr, at=None):
 
 def counter(name, extra='', window='5m'):
     return ('sum(max by (pod, action, result, reason, scope) ('
-            f'rate({name}{{namespace="dev"{extra}}}[{window}]) or '
-            f'rate({name}{{exported_namespace="dev"{extra}}}[{window}])))')
+            f'rate({name}{{namespace="{NAMESPACE}"{extra}}}[{window}]) or '
+            f'rate({name}{{exported_namespace="{NAMESPACE}"{extra}}}[{window}])))')
 
 
-CONNECTIONS = 'sum(max by (pod) (chargeops_csms_connections{namespace="dev"} or chargeops_csms_connections{exported_namespace="dev"}))'
+CONNECTIONS = f'sum(max by (pod) (chargeops_csms_connections{{namespace="{NAMESPACE}"}} or chargeops_csms_connections{{exported_namespace="{NAMESPACE}"}}))'
 THROUGHPUT = counter('chargeops_ocpp_handler_results_total', ',action=~"Heartbeat|MeterValues|StatusNotification",result="success"')
 ALL_RESULTS = counter('chargeops_ocpp_handler_results_total')
 ERRORS = counter('chargeops_ocpp_handler_results_total', ',result=~"error|timeout"')
 DISCONNECTS = counter('chargeops_csms_disconnect_total', ',kind="service",reason=~"abnormal|handler_error"')
 RECONNECTS = counter('chargeops_csms_reconnect_total', ',kind="service",scope="pod_local"')
+RECEIVED = counter('chargeops_ocpp_messages_total', ',action=~"Heartbeat|MeterValues|StatusNotification"')
+LEGACY_CLOSED = counter('chargeops_ocpp_connections_total', ',event="closed"')
+LEGACY_ACCEPTED = counter('chargeops_ocpp_connections_total', ',event="accepted"')
 
 
 def pod_check(items, previous, minimum=2):
@@ -119,7 +123,7 @@ def compare(baseline, current, observer, drop_limit=50):
 def canary_hash():
     directory = Path('/var/run/secrets/kubernetes.io/serviceaccount')
     transport = build_opener(ProxyHandler({}), HTTPSHandler(context=ssl.create_default_context(cafile=str(directory / 'ca.crt'))))
-    req = Request('https://kubernetes.default.svc/api/v1/namespaces/dev/services/csms-canary',
+    req = Request(f'https://kubernetes.default.svc/api/v1/namespaces/{NAMESPACE}/services/csms-canary',
                   headers={'Authorization': 'Bearer ' + (directory / 'token').read_text().strip()})
     with transport.open(req, timeout=5) as response:
         value = json.load(response)['spec']['selector'].get('rollouts-pod-template-hash', '')
@@ -128,6 +132,8 @@ def canary_hash():
 
 
 def main(observer):
+    if NAMESPACE not in ('dev','ops'):
+        raise ValueError('Gate requires namespace dev or ops')
     if os.environ.get('GATE_ENABLED', 'false') != 'true':
         observer.status = {str(i): 3 for i in range(1, 6)}
         print('SKIP: five-level gate not activated by a baseline-aware Jenkins build', flush=True)
@@ -144,19 +150,31 @@ def main(observer):
     candidate_hash = canary_hash()
     while True:
         try:
-            previous = pod_check(pods(), previous)
+            previous = pod_check(pods(), previous, minimum=2 if NAMESPACE == 'dev' else 4)
             observer.status['1'] = 1
         except ValueError:
             observer.status['1'] = -1
             raise
         for name in ('csms', 'csms-canary'):
-            if not request(f'http://{name}.dev.svc.cluster.local:8000/healthz')[0]:
+            if not request(f'http://{name}.{NAMESPACE}.svc.cluster.local:8000/healthz')[0]:
                 observer.status['2'] = -1
                 raise ValueError('L2: health/DB check failed')
         observer.status['2'] = 1
         if baseline is None:
-            baseline = {key: query(f'avg_over_time(({expr})[5m:15s])' if key == 'connections' else expr,
-                                   baseline_at) for key, expr in expressions.items()}
+            baseline = {}
+            compatibility = 0
+            for key, expr in expressions.items():
+                try:
+                    baseline[key] = query(f'avg_over_time(({expr})[5m:15s])' if key == 'connections' else expr, baseline_at)
+                except MissingData:
+                    # First metric migration: compare the same old/new received counter;
+                    # all closes/accepts are conservative upper bounds for abnormal closes/reconnects.
+                    fallback = {'throughput':RECEIVED,'disconnect':LEGACY_CLOSED,'reconnect':LEGACY_ACCEPTED}.get(key)
+                    if fallback is None: raise
+                    baseline[key] = query(fallback, baseline_at)
+                    compatibility = 1
+                    if key == 'throughput': expressions[key] = RECEIVED
+            observer.values['baseline_compatibility_mode'] = compatibility
         # Candidate abnormal closures only: excludes normal closes, drain and reserved fixture.
         abnormal = query(counter('chargeops_csms_disconnect_total',
             f',kind="service",reason=~"abnormal|handler_error",pod=~"csms-{candidate_hash}-.*"', '1m')) * 60
@@ -170,7 +188,7 @@ def main(observer):
             current = {key: query(expr) for key, expr in expressions.items()}
             current.update(total=query(ALL_RESULTS), errors=query(ERRORS))
             compare(baseline, current, observer, float(os.environ.get('GATE_THROUGHPUT_DROP_PERCENT', '50')))
-            print('PASS: five-level Dev gate', flush=True)
+            print(f'PASS: five-level {NAMESPACE} gate', flush=True)
             return
         time.sleep(5)
 

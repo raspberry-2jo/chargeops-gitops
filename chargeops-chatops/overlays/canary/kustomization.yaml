@@ -8,10 +8,14 @@ resources:
   - analysis.yaml
   - networkpolicy.yaml
   - probe-monitoring.yaml
+  - gate-rbac.yaml
 configMapGenerator:
   - name: csms-canary-probe
     files:
       - probe.py
       - probe_metrics.py
+      - service_gates.py
 generatorOptions:
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
   disableNameSuffixHash: true

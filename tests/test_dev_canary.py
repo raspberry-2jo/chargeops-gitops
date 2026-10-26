@@ -99,14 +99,15 @@ def test_real_http_probe_normal_and_controlled_404(monkeypatch, fault):
     observer = metrics.Observer(.01, 1, 2, 2, 60)
     try:
         if fault == '20':
-            with pytest.raises(ValueError, match='one percent'):
+            with pytest.raises(ValueError, match='Health/DB'):
                 probe.main(observer)
-            assert counts['error'] == 3
+            assert counts['error'] == 1
             assert 'chargeops_canary_probe_error_ratio{target="canary"} 0.05' in observer.render().decode()
         else:
             probe.main(observer)
             assert counts['error'] == 0
-        assert counts['ok'] + counts['error'] == 180
+        if fault == '0':
+            assert counts['ok'] + counts['error'] == 180
     finally:
         server.shutdown()
         server.server_close()

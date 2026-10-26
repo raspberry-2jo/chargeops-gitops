@@ -34,7 +34,9 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
     assert additions == {('Rollout', 'csms'), ('AnalysisTemplate', 'csms-availability'),
                          ('Service', 'csms-stable'), ('Service', 'csms-canary'), ('ConfigMap', 'csms-canary-probe'),
                          ('NetworkPolicy', 'csms-canary-probe'), ('Service', 'csms-canary-probe-metrics'),
-                         ('ServiceMonitor', 'csms-canary-probe'), ('NetworkPolicy', 'csms-canary-probe-metrics')}
+                         ('ServiceMonitor', 'csms-canary-probe'), ('NetworkPolicy', 'csms-canary-probe-metrics'),
+                         ('ServiceAccount','csms-ops-service-gate'),('Role','csms-ops-service-gate'),
+                         ('RoleBinding','csms-ops-service-gate'),('NetworkPolicy','csms-ops-service-gate-egress')}
     rollout = actual['Rollout', 'csms']['spec']
     assert rollout['replicas'] == 4
     assert rollout['workloadRef']['scaleDown'] == 'never'
@@ -59,7 +61,7 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
     assert labels == {'chargeops.io/role': 'canary-probe'}
 
 
-@pytest.mark.parametrize('failure', ['errors', 'slow', 'relative', 'empty', 'undersampled'])
+@pytest.mark.parametrize('failure', ['errors', 'empty', 'undersampled'])
 def test_metric_gate_fails_closed(failure):
     results = {'service': [(True, 0.02)] * 60, 'stable': [(True, 0.01)] * 60, 'canary': [(True, 0.02)] * 60}
     if failure == 'errors': results['canary'][0] = (False, 0.02)
@@ -69,6 +71,11 @@ def test_metric_gate_fails_closed(failure):
     if failure == 'undersampled': results['canary'] = [(True, 0.01)] * 59
     with pytest.raises(ValueError):
         probe.evaluate(results)
+
+
+def test_http_latency_is_observed_without_gating_service_canary():
+    results = {'service': [(True,0.01)]*60,'stable':[(True,0.01)]*60,'canary':[(True,1.5)]*60}
+    assert probe.evaluate(results)['canary']['p95_seconds'] == 1.5
 
 
 def test_metric_gate_works_at_100_percent_without_stable_pods():
