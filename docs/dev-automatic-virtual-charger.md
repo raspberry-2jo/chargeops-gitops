@@ -4,7 +4,15 @@
 CSMS가 준비되면 실제 WebSocket/OCPP 연결을 시작하고, 접속 실패·재배포·Pod 교체 때 최대 30초 간격으로 재시도한다.
 세 대의 ID는 `CI-DEV-SIM-01`, `CI-DEV-SIM-02`, `CI-DEV-SIM-03`이다.
 BootNotification, StatusNotification, Heartbeat, MeterValues를 전송한다.
-충전 전류는 0A이고 상태는 Available인 시뮬레이션이다.
+세 대가 독립적으로 Available → Preparing → Charging → Finishing 주기를 반복한다.
+초기 상태는 Available 또는 Charging이며 매 주기 시간도 다르다.
+Available 45~90초, Preparing 15~30초, Charging 120~240초, Finishing 15~30초다.
+충전 중 전류는 10~30A 범위에서 서서히 변하고 다른 상태에서는 0A다.
+전압은 215~225V 범위에서 변하며 온도는 전류에 따라 서서히 상승·냉각한다.
+에너지는 이전 전류×전압×경과 시간으로 Wh를 누적한다. 프로세스 재시작 시 초기화한다.
+MeterValues는 약 10초마다 보내고 Heartbeat는 CSMS 지정 주기로 별도 전송한다.
+상태가 바뀔 때 StatusNotification을 보낸다. 이 모델은 시연용이며
+StartTransaction/StopTransaction이나 과금·실제 전기적 특성까지 재현하는 모델은 아니다.
 
 ## 데이터와 검사 범위
 
@@ -48,7 +56,7 @@ kubectl -n dev get analysisruns --sort-by=.metadata.creationTimestamp
 ```
 
 로그에 각 ID의 `connected; BootNotification accepted`와
-`Heartbeat and MeterValues accepted`가 반복되면 통신 중이다.
+`Heartbeat accepted`, `MeterValues accepted: ...`가 반복되면 통신 중이다.
 Deployment Available은 프로세스 실행 여부이며 WebSocket 통신 성공은 로그와 지표로 확인한다.
 
 Grafana에서 환경 `dev`, 최근 15분 이상을 선택한다.
@@ -65,6 +73,11 @@ chargeops_canary_ocpp_result{namespace="dev"}
 접속·종료·거부 카운터는 새 앱에서 모두 0으로 초기화하므로 사건이 없는 항목은 0이다.
 Canary 검사 기록은 실제 검사 실행과 probe ServiceMonitor 수집이 모두 필요하다.
 Ops에서 이 검사 기록이 없는 것은 Ops 앱 이미지 배포만으로 해결되지 않는다.
+
+랜덤 계량값 버전은 simulator Pod template annotation을 갱신해 자동 재시작한다.
+온도·전류는 기존 앱 지표로 수집하고 전압·누적 전력량은 새 앱 이미지의
+`chargeops_charger_voltage_volts`, `chargeops_charger_energy_wh` 지표가 필요하다.
+Git 밖의 최신 chargeops-websocket-overview-ko.json을 Grafana에 덮어써서 계량 그래프를 표시한다.
 
 임시 중지는 `kubectl -n dev scale deployment/dev-vcharger --replicas=0`으로 할 수 있지만
 ArgoCD self-heal이 복원할 수 있다. 지속 중지는 Git의 simulator.yaml replicas를 0으로 반영한다.

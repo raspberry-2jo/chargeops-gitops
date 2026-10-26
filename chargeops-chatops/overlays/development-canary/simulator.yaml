@@ -13,6 +13,8 @@ spec:
   template:
     metadata:
       labels: {app: dev-vcharger}
+      annotations:
+        chargeops.io/simulator-version: '2'
     spec:
       automountServiceAccountToken: false
       securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001}

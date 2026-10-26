@@ -3,12 +3,51 @@ import asyncio
 import json
 import logging
 import os
+import math
+import random
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 
 URL = 'ws://csms.dev.svc.cluster.local:9000/ocpp/'
 log = logging.getLogger('dev-vcharger')
+
+
+class ChargerModel:
+    """Bounded demo charging cycle; not an electrical or billing simulator."""
+    phases = ('Available', 'Preparing', 'Charging', 'Finishing')
+    durations = {'Available': (45, 90), 'Preparing': (15, 30),
+                 'Charging': (120, 240), 'Finishing': (15, 30)}
+
+    def __init__(self, rng=None, clock=time.monotonic):
+        self.rng = rng or random.Random()
+        self.clock = clock
+        self.status = self.rng.choice(('Available', 'Charging'))
+        self.last = clock()
+        self.next_phase = self.last + self.rng.uniform(*self.durations[self.status])
+        self.voltage = self.rng.uniform(218, 222)
+        self.current = self.rng.uniform(12, 24) if self.status == 'Charging' else 0
+        self.temperature = self.rng.uniform(26, 31)
+        self.energy_wh = 0.0
+
+    def sample(self):
+        now = self.clock()
+        elapsed = max(0, now - self.last)
+        # Integration over the previous sample interval; monotonic across reconnects.
+        self.energy_wh += self.current * self.voltage * elapsed / 3600
+        target = 27 + self.current * 0.5
+        self.temperature += (target - self.temperature) * (1 - math.exp(-elapsed / 120))
+        self.temperature = min(50, max(24, self.temperature + self.rng.uniform(-0.1, 0.1)))
+        self.last = now
+        while now >= self.next_phase:
+            self.status = self.phases[(self.phases.index(self.status) + 1) % len(self.phases)]
+            self.next_phase += self.rng.uniform(*self.durations[self.status])
+        self.current = min(30, max(10, self.current + self.rng.uniform(-1.5, 1.5))) if self.status == 'Charging' else 0
+        self.voltage = min(225, max(215, self.voltage + self.rng.uniform(-0.8, 0.8)))
+        return {'Current.Import': (self.current, 'A'), 'Voltage': (self.voltage, 'V'),
+                'Temperature': (self.temperature, 'Celsius'),
+                'Energy.Active.Import.Register': (self.energy_wh, 'Wh')}
 
 
 def timestamp():
@@ -24,35 +63,45 @@ async def request(socket, action, payload):
     return response[2]
 
 
-async def session(charger, connect, sleep=asyncio.sleep):
+async def session(charger, connect, sleep=asyncio.sleep, model=None, clock=time.monotonic):
+    model = model or ChargerModel(clock=clock)
     async with connect(URL + charger, subprotocols=['ocpp1.6'], open_timeout=10,
                        close_timeout=3, ping_interval=20, proxy=None) as socket:
         boot = await request(socket, 'BootNotification', {
             'chargePointVendor': 'ChargeOps-Dev', 'chargePointModel': 'InMemorySimulator'})
         if boot.get('status') != 'Accepted':
             raise ValueError('BootNotification rejected')
-        await request(socket, 'StatusNotification', {
-            'connectorId': 1, 'status': 'Available', 'errorCode': 'NoError', 'timestamp': timestamp()})
         log.info('%s connected; BootNotification accepted', charger)
-        interval = max(1, min(int(boot.get('interval', 30)), 60))
+        interval = max(1, int(boot.get('interval', 30)))
+        last_status, next_heartbeat = None, clock()
         while True:
-            heartbeat = await request(socket, 'Heartbeat', {})
-            if not heartbeat.get('currentTime'):
-                raise ValueError('Heartbeat response missing currentTime')
+            values = model.sample()
+            if model.status != last_status:
+                await request(socket, 'StatusNotification', {
+                    'connectorId': 1, 'status': model.status, 'errorCode': 'NoError', 'timestamp': timestamp()})
+                last_status = model.status
+                log.info('%s status=%s', charger, model.status)
+            if clock() >= next_heartbeat:
+                heartbeat = await request(socket, 'Heartbeat', {})
+                if not heartbeat.get('currentTime'):
+                    raise ValueError('Heartbeat response missing currentTime')
+                next_heartbeat = clock() + interval
+                log.info('%s Heartbeat accepted', charger)
             await request(socket, 'MeterValues', {'connectorId': 1, 'meterValue': [{
                 'timestamp': timestamp(), 'sampledValue': [
-                    {'value': '0', 'measurand': 'Current.Import'},
-                    {'value': '220', 'measurand': 'Voltage'},
-                    {'value': '35', 'measurand': 'Temperature'}]}]})
-            log.info('%s Heartbeat and MeterValues accepted', charger)
-            await sleep(interval)
+                    {'value': f'{value:.2f}', 'measurand': measurand, 'unit': unit}
+                    for measurand, (value, unit) in values.items()]}]})
+            log.info('%s MeterValues accepted: %s %.1fA %.1fV %.1fC %.1fWh', charger,
+                     model.status, model.current, model.voltage, model.temperature, model.energy_wh)
+            await sleep(min(10, max(0.1, next_heartbeat - clock())))
 
 
 async def run_charger(charger, connect):
     delay = 1
+    model = ChargerModel()
     while True:
         try:
-            await session(charger, connect)
+            await session(charger, connect, model=model)
         except Exception as error:
             log.warning('%s disconnected (%s); retry in %ss', charger, type(error).__name__, delay)
         await asyncio.sleep(delay)
