@@ -2,10 +2,10 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: '-1'
   name: csms-ops-service-gate-settings
 data:
   GATE_ENABLED: 'true'
-  GATE_BASELINE_AT: '0'
+  GATE_BASELINE_AT: '1793008335'
   GATE_THROUGHPUT_DROP_PERCENT: '50'
   GATE_PROMETHEUS_URL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
