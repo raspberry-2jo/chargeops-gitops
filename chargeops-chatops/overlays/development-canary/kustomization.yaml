@@ -39,4 +39,4 @@ replacements:
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  digest: sha256:b634ddd2c49c328e3b51f25960192bef1c6574ab9d98c2a8fddd66f339ef0462
+  digest: sha256:aa742372a22437ead6a5dbfedd6a378f35e9f1119e1e05259bb412b58fd31b3c
