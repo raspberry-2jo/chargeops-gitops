@@ -36,7 +36,8 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
                          ('NetworkPolicy', 'csms-canary-probe'), ('Service', 'csms-canary-probe-metrics'),
                          ('ServiceMonitor', 'csms-canary-probe'), ('NetworkPolicy', 'csms-canary-probe-metrics'),
                          ('ServiceAccount','csms-ops-service-gate'),('Role','csms-ops-service-gate'),
-                         ('RoleBinding','csms-ops-service-gate'),('NetworkPolicy','csms-ops-service-gate-egress')}
+                         ('RoleBinding','csms-ops-service-gate'),('NetworkPolicy','csms-ops-service-gate-egress'),
+                         ('ConfigMap','csms-ops-ocpp-settings')}
     rollout = actual['Rollout', 'csms']['spec']
     assert rollout['replicas'] == 4
     assert rollout['workloadRef']['scaleDown'] == 'never'
@@ -57,7 +58,7 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
     assert policy['podSelector'] == {'matchLabels': {'app': 'csms'}}
     assert policy['policyTypes'] == ['Ingress']
     assert policy['ingress'] == [{'from': [{'podSelector': {'matchLabels': labels}}],
-                                  'ports': [{'protocol': 'TCP', 'port': 8000}]}]
+                                  'ports': [{'protocol': 'TCP', 'port': 8000}, {'protocol': 'TCP', 'port': 9000}]}]
     assert labels == {'chargeops.io/role': 'canary-probe'}
 
 

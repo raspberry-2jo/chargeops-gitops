@@ -1,0 +1,8 @@
+# Temporary one-time handover; final Application path is development-rolling.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dev
+resources:
+  - ../development-rolling
+patches:
+  - path: quota.yaml

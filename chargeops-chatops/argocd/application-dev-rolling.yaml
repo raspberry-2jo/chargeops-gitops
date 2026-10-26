@@ -1,0 +1,18 @@
+# Post-migration declaration for the EXISTING Application. Use migrate-dev-rolling.py first.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chargeops-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/raspberry-2jo/chargeops-gitops.git
+    targetRevision: main
+    path: chargeops-chatops/overlays/development-rolling
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated: {prune: false, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

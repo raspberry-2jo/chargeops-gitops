@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    chargeops.io/metrics: csms-dev-release-probe
+  name: csms-dev-release-probe-metrics
+spec:
+  ports:
+  - name: probe-metrics
+    port: 9110
+    targetPort: probe-metrics
+  selector:
+    chargeops.io/role: dev-release-probe
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: csms-dev-release-probe
+spec:
+  endpoints:
+  - interval: 5s
+    path: /metrics
+    port: probe-metrics
+    scrapeTimeout: 3s
+  namespaceSelector:
+    matchNames:
+    - dev
+  selector:
+    matchLabels:
+      chargeops.io/metrics: csms-dev-release-probe
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: csms-dev-release-probe
+spec:
+  egress:
+  - ports:
+    - port: 9090
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+  - ports:
+    - port: 443
+      protocol: TCP
+    - port: 6443
+      protocol: TCP
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    ports:
+    - port: 9110
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      chargeops.io/role: dev-release-probe
+  policyTypes:
+  - Ingress
+  - Egress

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dev-vcharger
+  annotations:
+    argocd.argoproj.io/sync-wave: '2'
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dev-vcharger
+  template:
+    metadata:
+      labels:
+        app: dev-vcharger
+      annotations:
+        chargeops.io/simulator-version: '2'
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+      - name: simulator
+        image: registry.chargeops.lab:5000/chargeops/chargeops-csms@sha256:e75c7117c48071f1ea0672c6c1ee1548f614a0a8661a1daaf5b4802c71ac0b29
+        command:
+        - python
+        - /simulator/simulator.py
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SIMULATOR_IDS
+          value: CI-DEV-SIM-01,CI-DEV-SIM-02,CI-DEV-SIM-03
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: script
+          mountPath: /simulator
+          readOnly: true
+      volumes:
+      - name: script
+        configMap:
+          name: csms-dev-simulator

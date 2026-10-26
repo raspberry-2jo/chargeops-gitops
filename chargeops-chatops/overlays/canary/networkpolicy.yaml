@@ -7,12 +7,14 @@ spec:
     matchLabels:
       app: csms
   policyTypes:
-    - Ingress
+  - Ingress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              chargeops.io/role: canary-probe
-      ports:
-        - protocol: TCP
-          port: 8000
+  - from:
+    - podSelector:
+        matchLabels:
+          chargeops.io/role: canary-probe
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 9000

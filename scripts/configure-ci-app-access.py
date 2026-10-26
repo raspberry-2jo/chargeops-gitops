@@ -27,7 +27,9 @@ def configure(dev_name, ops_name):
         app = json.loads(run('kubectl', '-n', 'argocd', 'get', 'application', name, '-o', 'json'))
         spec = app['spec']
         if (spec['destination']['namespace'] != namespace
-                or spec['source']['path'] != 'chargeops-chatops/overlays/' + path
+                or spec['source']['path'] not in (['chargeops-chatops/overlays/development',
+                    'chargeops-chatops/overlays/development-canary','chargeops-chatops/overlays/development-rolling']
+                    if namespace == 'dev' else ['chargeops-chatops/overlays/' + path])
                 or spec['source'].get('targetRevision') != 'main'):
             raise ValueError('Application namespace, path or GitOps branch does not match the intended environment')
         auto = spec.get('syncPolicy', {}).get('automated')

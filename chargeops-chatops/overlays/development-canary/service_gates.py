@@ -24,6 +24,7 @@ class Observer:
         self.status = {str(i): 0 for i in range(1, 6)}
         self.values, self.limits = {}, {}
         self.baseline = 0
+        self.started = time.time()
 
     def render(self):
         with self.lock:
@@ -31,6 +32,7 @@ class Observer:
             for name, data in [('value', self.values.copy()), ('limit', self.limits.copy())]:
                 lines += [f'chargeops_canary_gate_{name}{{signal="{key}"}} {value}' for key, value in data.items()]
             lines += [f'chargeops_canary_gate_baseline_timestamp_seconds {self.baseline}']
+            lines += [f'chargeops_canary_gate_started_timestamp_seconds {self.started}']
             return ('\n'.join(lines) + '\n').encode()
 
 

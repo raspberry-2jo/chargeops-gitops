@@ -5,3 +5,4 @@
 .ci-venv/
 __pycache__/
 .pytest_cache/
+/.dev-rolling-migration.json

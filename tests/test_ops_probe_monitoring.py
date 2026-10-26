@@ -26,7 +26,7 @@ def test_apply_sends_only_telemetry_resources_and_checks_workloads(monkeypatch):
     assert len(writes) == 1
     sent = list(yaml.safe_load_all(writes[0][1]['payload']))
     assert {(d['kind'], d['metadata']['name']) for d in sent} == module.ALLOWED
-    assert not any(d['kind'] in ('Deployment', 'Rollout', 'Secret', 'Application') for d in sent)
+    assert not any(d['kind'] in ('Deployment', 'Rollout', 'Secret', 'Application', 'AnalysisTemplate') for d in sent)
 
 
 @pytest.mark.parametrize('fault', ['active_sync', 'automatic_sync', 'wrong_namespace', 'unhealthy', 'active_analysis'])

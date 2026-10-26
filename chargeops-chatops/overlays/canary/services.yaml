@@ -6,9 +6,9 @@ spec:
   selector:
     app: csms
   ports:
-    - name: http
-      port: 8000
-      targetPort: http
+  - name: http
+    port: 8000
+    targetPort: http
 ---
 apiVersion: v1
 kind: Service
@@ -18,6 +18,9 @@ spec:
   selector:
     app: csms
   ports:
-    - name: http
-      port: 8000
-      targetPort: http
+  - name: http
+    port: 8000
+    targetPort: http
+  - name: ocpp
+    port: 9000
+    targetPort: ocpp

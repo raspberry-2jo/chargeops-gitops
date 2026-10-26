@@ -3,7 +3,7 @@ kind: Rollout
 metadata:
   name: csms
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: '0'
 spec:
   replicas: 4
   revisionHistoryLimit: 3
@@ -19,8 +19,6 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: csms
-    # Deployment stays at zero after the verified bootstrap handover.
-    # Never revive its candidate image when an analysis fails.
     scaleDown: never
   strategy:
     canary:
@@ -29,24 +27,33 @@ spec:
       stableService: csms-stable
       canaryService: csms-canary
       steps:
-        - setWeight: 25
-        - analysis:
-            templates:
-              - templateName: csms-availability
-            args:
-              - name: check-stable
-                value: "true"
-        - setWeight: 50
-        - analysis:
-            templates:
-              - templateName: csms-availability
-            args:
-              - name: check-stable
-                value: "true"
-        - setWeight: 100
-        - analysis:
-            templates:
-              - templateName: csms-availability
-            args:
-              - name: check-stable
-                value: "false"
+      - setWeight: 25
+      - analysis:
+          templates:
+          - templateName: csms-availability
+          args:
+          - name: check-stable
+            value: 'true'
+          - name: candidate-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      - setWeight: 50
+      - analysis:
+          templates:
+          - templateName: csms-availability
+          args:
+          - name: check-stable
+            value: 'true'
+          - name: candidate-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      - setWeight: 100
+      - analysis:
+          templates:
+          - templateName: csms-availability
+          args:
+          - name: check-stable
+            value: 'false'
+          - name: candidate-hash
+            valueFrom:
+              podTemplateHashValue: Latest

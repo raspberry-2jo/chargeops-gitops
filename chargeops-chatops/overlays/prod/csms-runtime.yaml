@@ -4,6 +4,7 @@ metadata:
   name: csms
   annotations:
     chargeops.io/csms-code-ast-sha256: 04a4faf5a6070486fe340f24bc0059e177ae416a5fd79d0cb909e81b62f2c5dc
+    argocd.argoproj.io/sync-wave: '1'
 spec:
   replicas: 0
   selector:

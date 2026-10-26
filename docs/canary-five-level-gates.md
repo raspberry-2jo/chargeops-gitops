@@ -1,3 +1,7 @@
+> 새 목표 구성은 Dev RollingUpdate + Ops Canary다. 이 문서의 Dev gate는 기존 development-canary 호환 구성에 해당한다.
+> 새 Dev는 Jenkins 배포 후 실통신 검사를 사용하며, Ops는 5단계 지표 검사와 후보 직접 검사를 함께 사용한다.
+> 전환·시험 ID·대시보드 적용은 [새 배포 안내](dev-rolling-ops-websocket.md)를 따른다.
+
 # Dev·Ops CSMS 5단계 Canary 기준
 
 Dev와 Ops 모두 GATE_ENABLED=true다. 새 앱 Jenkins 배포가 환경별 기준 시각을 기록하고

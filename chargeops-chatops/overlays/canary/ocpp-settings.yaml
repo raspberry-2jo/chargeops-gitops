@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csms-ops-ocpp-settings
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+data:
+  OCPP_TEST_CHARGER_ID: ''
+  OCPP_FIXTURE_RESERVED: 'false'

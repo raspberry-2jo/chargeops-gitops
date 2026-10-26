@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: development-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+spec:
+  hard:
+    limits.cpu: '6'
+    limits.memory: 6Gi

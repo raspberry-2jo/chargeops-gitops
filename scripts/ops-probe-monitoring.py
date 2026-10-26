@@ -2,6 +2,8 @@
 
 Run on mgmt with its existing administrator kubecontext. Never applies CSMS
 Deployment, Rollout, images, Secrets or Argo Application resources.
+Analysis policy is installed only by the approved Jenkins delivery, together
+with candidate arguments, service ports and the matching probe image.
 """
 import argparse
 import copy
@@ -14,7 +16,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 OVERLAY = ROOT / 'chargeops-chatops/overlays/canary'
-ALLOWED = {('ConfigMap', 'csms-canary-probe'), ('AnalysisTemplate', 'csms-availability'),
+ALLOWED = {('ConfigMap', 'csms-canary-probe'),
            ('Service', 'csms-canary-probe-metrics'), ('ServiceMonitor', 'csms-canary-probe'),
            ('NetworkPolicy', 'csms-canary-probe-metrics'),
            ('ConfigMap','csms-ops-service-gate-settings'),
@@ -79,7 +81,7 @@ def apply():
     print(run('kubectl', 'apply', '-f', '-', payload=yaml.safe_dump_all(docs)), end='')
     if workload_snapshot() != before:
         raise RuntimeError('CSMS workload changed concurrently; inspect the deployment before continuing')
-    print('Applied Ops probe and service-gate resources. CSMS Deployment/Rollout specs unchanged.')
+    print('Applied Ops telemetry resources. Analysis policy requires approved Jenkins delivery; CSMS Deployment/Rollout specs unchanged.')
 
 
 def check():
