@@ -8,6 +8,7 @@ resources:
 - analysis.yaml
 - monitoring.yaml
 - probe-rbac.yaml
+- ocpp-settings.yaml
 patches:
 - path: deployment-reference.yaml
 - path: verifier-rbac.yaml
@@ -16,8 +17,20 @@ configMapGenerator:
   files:
   - probe.py
   - probe_metrics.py
+  - ocpp_probe.py
 generatorOptions:
   disableNameSuffixHash: true
+replacements:
+- source:
+    kind: Deployment
+    name: csms
+    fieldPath: spec.template.spec.containers.[name=csms].image
+  targets:
+  - select:
+      kind: AnalysisTemplate
+      name: csms-dev-availability
+    fieldPaths:
+    - spec.metrics.[name=ocpp-websocket].provider.job.spec.template.spec.containers.[name=probe].image
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms

@@ -57,3 +57,49 @@ spec:
                   - name: probe
                     configMap:
                       name: csms-dev-canary-probe
+    - name: ocpp-websocket
+      count: 1
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 180
+            ttlSecondsAfterFinished: 86400
+            template:
+              metadata:
+                labels:
+                  chargeops.io/role: dev-canary-probe
+              spec:
+                automountServiceAccountToken: false
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 10001
+                  runAsGroup: 10001
+                containers:
+                  - name: probe
+                    # Kustomize replacement binds this to the candidate CSMS image.
+                    image: registry.chargeops.lab:5000/chargeops/chargeops-csms:dev
+                    command: [python, /probe/ocpp_probe.py]
+                    envFrom:
+                      - configMapRef:
+                          name: csms-dev-ocpp-settings
+                    ports:
+                      - name: probe-metrics
+                        containerPort: 9110
+                    volumeMounts:
+                      - name: probe
+                        mountPath: /probe
+                        readOnly: true
+                    resources:
+                      requests:
+                        cpu: 50m
+                        memory: 32Mi
+                      limits:
+                        cpu: 250m
+                        memory: 128Mi
+                volumes:
+                  - name: probe
+                    configMap:
+                      name: csms-dev-canary-probe

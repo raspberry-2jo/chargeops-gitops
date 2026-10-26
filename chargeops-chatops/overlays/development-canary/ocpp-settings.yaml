@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csms-dev-ocpp-settings
+data:
+  # Reserved, registered CI fixture required. Session/Heartbeat use shared DB.
+  OCPP_PROBE_ENABLED: "false"
+  OCPP_TEST_CHARGER_ID: ""
