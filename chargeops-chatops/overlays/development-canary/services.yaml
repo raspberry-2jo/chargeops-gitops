@@ -15,3 +15,4 @@ spec:
   selector: {app: csms}
   ports:
     - {name: http, port: 8000, targetPort: http}
+    - {name: ocpp, port: 9000, targetPort: ocpp}

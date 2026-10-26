@@ -67,6 +67,8 @@ def test_candidate_image_binding_and_disabled_default():
     container = job['template']['spec']['containers'][0]
     image = next(c['image'] for c in deployment['spec']['template']['spec']['containers'] if c['name'] == 'csms')
     assert container['image'] == image
+    service = next(d for d in docs if d['kind'] == 'Service' and d['metadata']['name'] == 'csms-canary')
+    assert {'name': 'ocpp', 'port': 9000, 'targetPort': 'ocpp'} in service['spec']['ports']
     assert job['template']['spec']['automountServiceAccountToken'] is False
     settings = next(d for d in docs if d['kind'] == 'ConfigMap' and d['metadata']['name'] == 'csms-dev-ocpp-settings')
     assert settings['data'] == {'OCPP_PROBE_ENABLED': 'false', 'OCPP_TEST_CHARGER_ID': ''}
