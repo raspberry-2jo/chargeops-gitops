@@ -1,6 +1,6 @@
 """Dev-only candidate OCPP check using an explicitly reserved charger.
 
-Writes only session/Heartbeat via CSMS; no SQL or charger control commands.
+Uses the Dev CSMS simulation allowlist by default; no charger DB writes in that mode.
 """
 import asyncio
 import json

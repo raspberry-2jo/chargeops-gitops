@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: csms-dev-ocpp-settings
 data:
-  # Reserved, registered CI fixture required. Session/Heartbeat use shared DB.
-  OCPP_PROBE_ENABLED: "false"
-  OCPP_TEST_CHARGER_ID: ""
+  # Explicit Dev simulation allowlist: real WebSocket/OCPP, no charger DB writes.
+  OCPP_PROBE_ENABLED: "true"
+  OCPP_TEST_CHARGER_ID: "CI-DEV-CANARY-01"

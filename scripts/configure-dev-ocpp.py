@@ -10,13 +10,13 @@ SETTINGS = Path(__file__).resolve().parents[1] / 'chargeops-chatops/overlays/dev
 
 def configure(charger=None, disable=False):
     if not disable and not re.fullmatch(r'CI-DEV-[A-Za-z0-9_-]+', charger or ''):
-        raise ValueError('Provide an already registered, exclusively reserved CI-DEV charger ID')
+        raise ValueError('Provide an exclusively reserved CI-DEV charger ID (Dev allowlisted or DB registered)')
     settings = yaml.safe_load(SETTINGS.read_text(encoding='utf-8'))
     settings['data'] = {'OCPP_PROBE_ENABLED': 'false' if disable else 'true',
                         'OCPP_TEST_CHARGER_ID': '' if disable else charger}
     SETTINGS.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding='utf-8')
     print('Updated Dev settings file only. Review/commit/push this file to activate via ArgoCD.')
-    print('OCPP tests write session/Heartbeat for this fixture through the shared DB. Never use a real charger ID.')
+    print('Default CI-DEV-CANARY-01 uses the Dev in-memory allowlist. Other IDs must be allowlisted or DB registered.')
 
 
 if __name__ == '__main__':

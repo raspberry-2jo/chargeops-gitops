@@ -5,3 +5,11 @@ metadata:
 spec:
   # Template source only after the controlled handover; Rollout owns the Pods.
   replicas: 0
+  template:
+    spec:
+      containers:
+      - name: csms
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef: {fieldPath: metadata.namespace}

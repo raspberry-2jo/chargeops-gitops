@@ -37,7 +37,12 @@ def test_opt_in_does_not_modify_legacy_development_or_ops_workloads():
     for key, value in legacy.items():
         if key in [('Deployment', 'csms'), ('Role', 'jenkins-dev-verifier')]:
             continue
-        assert canary[key] == value
+        rendered = copy.deepcopy(canary[key])
+        if key == ('ConfigMap', 'chargeops-dev-config'):
+            assert rendered['data'].pop('DEV_SIMULATION_ENABLED') == 'true'
+            assert rendered['data'].pop('DEV_SIMULATION_IDS').split(',') == [
+                'CI-DEV-SIM-01', 'CI-DEV-SIM-02', 'CI-DEV-SIM-03', 'CI-DEV-CANARY-01']
+        assert rendered == value
     deployment = canary['Deployment', 'csms']
     assert deployment['spec']['replicas'] == 0
     # Jenkins pins a separately verified digest in the child overlay. Preserve
@@ -46,6 +51,10 @@ def test_opt_in_does_not_modify_legacy_development_or_ops_workloads():
     legacy_template = legacy['Deployment', 'csms']['spec']['template']
     legacy_image = next(c['image'] for c in legacy_template['spec']['containers'] if c['name'] == 'csms')
     next(c for c in template['spec']['containers'] if c['name'] == 'csms')['image'] = legacy_image
+    env = next(c for c in template['spec']['containers'] if c['name'] == 'csms')['env']
+    namespace_env = next(e for e in env if e['name'] == 'POD_NAMESPACE')
+    assert namespace_env['valueFrom']['fieldRef']['fieldPath'] == 'metadata.namespace'
+    env.remove(namespace_env)
     assert template == legacy_template
     assert all(d['metadata'].get('namespace', 'dev') == 'dev' for d in canary.values())
     r = canary['Rollout', 'csms']['spec']

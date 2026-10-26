@@ -9,15 +9,20 @@ resources:
 - monitoring.yaml
 - probe-rbac.yaml
 - ocpp-settings.yaml
+- simulator.yaml
 patches:
 - path: deployment-reference.yaml
 - path: verifier-rbac.yaml
+- path: simulation-config.yaml
 configMapGenerator:
 - name: csms-dev-canary-probe
   files:
   - probe.py
   - probe_metrics.py
   - ocpp_probe.py
+- name: csms-dev-simulator
+  files:
+  - simulator.py
 generatorOptions:
   disableNameSuffixHash: true
 replacements:

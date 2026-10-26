@@ -25,20 +25,23 @@ CSMS 이미지에 다음 계측을 추가했다. 기존 메시지 수신 지표�
 
 ## Dev OCPP 검사 활성화
 
-기본값은 `OCPP_PROBE_ENABLED=false`이며 미검증으로 표시한다. Successful AnalysisRun만 보고
-OCPP까지 검사됐다고 주장하지 않는다. 전용 `CI-DEV-...` 충전기를 먼저 DB 담당자와 예약해야 한다.
+현재 기본값은 `OCPP_PROBE_ENABLED=true`, ID는 `CI-DEV-CANARY-01`이다.
+새 Dev CSMS의 명시적 메모리 처리 allowlist를 사용하므로 이 ID는 DB 등록이 필요 없다.
+새 앱 코드를 먼저 배포해야 한다. 최초 반영 순서와 자동 가상 충전기는
+[Dev 자동 연결 안내](dev-automatic-virtual-charger.md)를 따른다.
+다른 ID로 바꾸면 Dev allowlist에 추가하거나 기존 방식으로 DB에 등록해야 한다.
 스크립트는 충전기 등록이나 삭제를 수행하지 않는다. 다른 프로세스가 같은 ID로 접속하면 안 된다.
 
 ```bash
 git pull --ff-only origin main
-python3 scripts/configure-dev-ocpp.py --charger-id CI-DEV-전용테스트ID
+python3 scripts/configure-dev-ocpp.py --charger-id CI-DEV-CANARY-01
 git diff -- chargeops-chatops/overlays/development-canary/ocpp-settings.yaml
 git add chargeops-chatops/overlays/development-canary/ocpp-settings.yaml
 git commit -m 'test(dev): enable reserved OCPP canary fixture'
 git push origin main
 ```
 
-위 ID는 예시다. 실제 등록된 영문/숫자 ID로 바꿔야 한다. 설정 반영 뒤 Jenkins kim_chanju 빌드를 실행한다.
+위 ID는 기본 Dev 메모리 처리 ID다. 설정 반영 뒤 Jenkins kim_chanju 빌드를 실행한다.
 Dev 각 분석 단계에서 csms-canary.dev.svc.cluster.local:9000의 새 버전에 직접 연결한다.
 검사 컨테이너 이미지는 Kustomize replacement로 Dev CSMS 후보와 정확히 같은 digest를 사용한다.
 
@@ -46,8 +49,9 @@ Dev 각 분석 단계에서 csms-canary.dev.svc.cluster.local:9000의 새 버전
 각 send/response/handshake 제한은 5초다. CallError, 응답 ID 불일치, 접속 거부, 연결 단절, 시간 초과 시 실패한다.
 Job deadline은 180초이며 마지막 판정 수집을 위해 20초 대기한다.
 
-이 검사는 session/Heartbeat DB 쓰기를 발생시킨다. 충전 시작/종료, Reset, StatusNotification,
-MeterValues, SQL 쓰기는 실행하지 않는다. DB에 영속됐는지 직접 조회하는 검사는 아니다.
+기본 Dev 메모리 처리 ID의 session/Heartbeat는 DB에 저장하지 않는다.
+DB 등록 방식의 다른 ID는 기존 DB 처리를 수행한다. 충전 시작/종료, Reset, StatusNotification,
+MeterValues를 검사 Job에서 실행하지 않는다. DB에 영속됐는지 직접 조회하는 검사는 아니다.
 일반 사용자 전체 연결 회복률이나 모든 충전기 메시지 정상 처리를 증명하지는 않는다.
 
 ```bash

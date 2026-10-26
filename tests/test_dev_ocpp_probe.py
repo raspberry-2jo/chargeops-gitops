@@ -58,7 +58,7 @@ def test_unreserved_id_rejected_before_connect():
         asyncio.run(probe.verify('real-charger', lambda *a, **k: pytest.fail('must not connect'), probe.State(CollectorRegistry())))
 
 
-def test_candidate_image_binding_and_disabled_default():
+def test_candidate_image_binding_and_simulated_default():
     import subprocess
     docs = [d for d in yaml.safe_load_all(subprocess.check_output(['kubectl', 'kustomize', str(P)], text=True)) if d]
     deployment = next(d for d in docs if d['kind'] == 'Deployment' and d['metadata']['name'] == 'csms')
@@ -71,7 +71,12 @@ def test_candidate_image_binding_and_disabled_default():
     assert {'name': 'ocpp', 'port': 9000, 'targetPort': 'ocpp'} in service['spec']['ports']
     assert job['template']['spec']['automountServiceAccountToken'] is False
     settings = next(d for d in docs if d['kind'] == 'ConfigMap' and d['metadata']['name'] == 'csms-dev-ocpp-settings')
-    assert settings['data'] == {'OCPP_PROBE_ENABLED': 'false', 'OCPP_TEST_CHARGER_ID': ''}
+    assert settings['data'] == {'OCPP_PROBE_ENABLED': 'true', 'OCPP_TEST_CHARGER_ID': 'CI-DEV-CANARY-01'}
+    simulator = next(d for d in docs if d['kind'] == 'Deployment' and d['metadata']['name'] == 'dev-vcharger')
+    assert simulator['spec']['template']['spec']['containers'][0]['image'] == image
+    config = next(d for d in docs if d['kind'] == 'ConfigMap' and d['metadata']['name'] == 'chargeops-dev-config')['data']
+    assert config['DEV_SIMULATION_ENABLED'] == 'true'
+    assert 'CI-DEV-CANARY-01' in config['DEV_SIMULATION_IDS'].split(',')
 
 
 def test_real_local_websocket_roundtrip_and_reconnect(monkeypatch):

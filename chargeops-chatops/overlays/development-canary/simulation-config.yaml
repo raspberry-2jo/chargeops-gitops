@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chargeops-dev-config
+data:
+  DEV_SIMULATION_ENABLED: 'true'
+  DEV_SIMULATION_IDS: CI-DEV-SIM-01,CI-DEV-SIM-02,CI-DEV-SIM-03,CI-DEV-CANARY-01
