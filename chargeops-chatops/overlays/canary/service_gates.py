@@ -133,6 +133,33 @@ def canary_hash():
     return value
 
 
+def candidate_traffic(observer, candidate):
+    """Observe real candidate traffic; never open a charger connection.
+
+    Called after at least 60 seconds. The one-minute window therefore cannot
+    count earlier analysis-step traffic as evidence for this step.
+    """
+    selector = f',pod=~"csms-{candidate}-.*"'
+    try:
+        heartbeat = query(counter('chargeops_ocpp_handler_results_total',
+            selector + ',action="Heartbeat",result="success"', '1m')) * 60
+        total = query(counter('chargeops_ocpp_handler_results_total', selector, '1m')) * 60
+        errors = query(counter('chargeops_ocpp_handler_results_total',
+            selector + ',result=~"error|timeout"', '1m')) * 60
+        observer.values['candidate_heartbeat_perminute'] = heartbeat
+        if heartbeat < 1 or total < 1:
+            raise MissingData('Candidate has no recent successful Heartbeat sample')
+    except MissingData:
+        observer.status['4'] = 2
+        raise
+    error_percent = 100 * errors / total
+    observer.values['candidate_error_percent'] = error_percent
+    observer.limits['candidate_error_percent'] = 5
+    if error_percent > 5:
+        observer.status['5'] = -1
+        raise ValueError('L5: candidate OCPP errors/timeouts exceeded five percent')
+
+
 def main(observer):
     if NAMESPACE not in ('dev','ops'):
         raise ValueError('Gate requires namespace dev or ops')
@@ -190,6 +217,8 @@ def main(observer):
             current = {key: query(expr) for key, expr in expressions.items()}
             current.update(total=query(ALL_RESULTS), errors=query(ERRORS))
             compare(baseline, current, observer, float(os.environ.get('GATE_THROUGHPUT_DROP_PERCENT', '50')))
+            if NAMESPACE == 'ops':
+                candidate_traffic(observer, candidate_hash)
             print(f'PASS: five-level {NAMESPACE} gate', flush=True)
             return
         time.sleep(5)

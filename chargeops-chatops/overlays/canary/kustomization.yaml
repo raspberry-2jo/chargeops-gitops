@@ -20,14 +20,3 @@ generatorOptions:
   annotations:
     argocd.argoproj.io/sync-wave: '-1'
   disableNameSuffixHash: true
-replacements:
-- source:
-    kind: Deployment
-    name: csms
-    fieldPath: spec.template.spec.containers.[name=csms].image
-  targets:
-  - select:
-      kind: AnalysisTemplate
-      name: csms-availability
-    fieldPaths:
-    - spec.metrics.[name=websocket-ocpp-smoke].provider.job.spec.template.spec.containers.[name=probe].image

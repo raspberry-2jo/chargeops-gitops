@@ -29,18 +29,14 @@ def test_dev_rolling_preserves_simulators_metrics_and_has_no_rollout():
     assert temporary['limits.cpu']=='6' and temporary['limits.memory']=='6Gi'
 
 
-def test_ops_probe_is_candidate_bound_and_unconfigured_fixture_cannot_pass():
+def test_ops_policy_uses_existing_traffic_without_active_fixture():
     docs=render('canary')
     template=next(d for d in docs if d['kind']=='AnalysisTemplate')
-    metric=next(m for m in template['spec']['metrics'] if m['name']=='websocket-ocpp-smoke')
-    pod=metric['provider']['job']['spec']['template']['spec']
-    container=pod['containers'][0]
-    deployment=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='csms')
-    assert container['image']==deployment['spec']['template']['spec']['containers'][0]['image']
-    assert container['command']==['python','-m','csms.release_probe'] and pod['automountServiceAccountToken'] is False
-    assert any(e['name']=='CANDIDATE_POD_HASH' and e['value']=='{{args.candidate-hash}}' for e in container['env'])
-    settings=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']=='csms-ops-ocpp-settings')['data']
-    assert settings=={'OCPP_TEST_CHARGER_ID':'','OCPP_FIXTURE_RESERVED':'false'}
+    assert {m['name'] for m in template['spec']['metrics']} == {
+        'availability-error-latency-restarts', 'five-level-service-gate'}
+    # No active connection Job / DB secret is needed for standard Ops promotion.
+    assert all(m['provider']['job']['spec']['template']['spec']['containers'][0]['command']
+               != ['python','-m','csms.release_probe'] for m in template['spec']['metrics'])
     rollout=next(d for d in docs if d['kind']=='Rollout')
     for step in rollout['spec']['strategy']['canary']['steps']:
         if 'analysis' in step:

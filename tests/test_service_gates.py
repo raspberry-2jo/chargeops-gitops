@@ -11,6 +11,31 @@ BASE = dict(connections=10, throughput=10, disconnect=5/60, reconnect=2/60)
 GOOD = dict(connections=10, throughput=10, disconnect=5/60, reconnect=2/60, total=10, errors=0)
 
 
+@pytest.mark.parametrize('heartbeat,total,errors,expected',[
+    (2,20,0,'pass'), (0,20,0,'missing'), (2,20,2,'fail'),
+    (2,20,1,'pass'), (2,0,0,'missing'), (None,20,0,'missing')])
+def test_candidate_traffic_cannot_use_stable_or_missing_samples(monkeypatch,heartbeat,total,errors,expected):
+    expressions=[]
+    def query(expr, at=None):
+        expressions.append(expr)
+        assert 'pod=~"csms-newhash-.*"' in expr and '[1m]' in expr
+        value = heartbeat if 'action="Heartbeat"' in expr else errors if 'error|timeout' in expr else total
+        if value is None: raise g.MissingData('absent')
+        return value/60
+    monkeypatch.setattr(g,'query',query)
+    observer=g.Observer()
+    if expected=='pass':
+        g.candidate_traffic(observer,'newhash')
+        assert observer.values['candidate_error_percent']<=5
+    elif expected=='missing':
+        with pytest.raises(g.MissingData):g.candidate_traffic(observer,'newhash')
+        assert observer.status['4']==2
+    else:
+        with pytest.raises(ValueError,match='candidate OCPP'):g.candidate_traffic(observer,'newhash')
+        assert observer.status['5']==-1
+    assert expressions
+
+
 @pytest.mark.parametrize('update,level', [({'connections':7},'3'), ({'disconnect':200/60},'3'),
     ({'reconnect':300/60},'3'), ({'throughput':5},'4'), ({'errors':0.5001},'5')])
 def test_user_failure_cases(update, level):
