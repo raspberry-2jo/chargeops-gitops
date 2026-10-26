@@ -172,8 +172,8 @@ def capacity():
                 return Decimal(value[:-len(suffix)]) * Decimal(str(factor))
         return Decimal(value)
     # Extra capacity beyond the currently running single CSMS Pod, including Jobs.
-    required = {'pods': '6', 'requests.cpu': '450m', 'requests.memory': '512Mi',
-                'limits.cpu': '3250m', 'limits.memory': '2688Mi'}
+    required = {'pods': '7', 'requests.cpu': '500m', 'requests.memory': '544Mi',
+                'limits.cpu': '3500m', 'limits.memory': '2816Mi'}
     quotas = json.loads(run('-n', 'dev', 'get', 'resourcequota', '-o', 'json'))['items']
     for quota in quotas:
         status = quota.get('status', {})

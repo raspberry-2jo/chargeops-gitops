@@ -36,6 +36,11 @@ spec:
   # Existing development-boundary already permits same-namespace HTTP and DNS.
   # Only the probe SA needs Kubernetes API TLS egress for read-only Pod checks.
   egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+      ports:
+        - {port: 9090, protocol: TCP}
     - ports:
         - {port: 443, protocol: TCP}
         - {port: 6443, protocol: TCP}

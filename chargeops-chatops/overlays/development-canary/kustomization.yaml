@@ -10,6 +10,7 @@ resources:
 - probe-rbac.yaml
 - ocpp-settings.yaml
 - simulator.yaml
+- gate-settings.yaml
 patches:
 - path: deployment-reference.yaml
 - path: verifier-rbac.yaml
@@ -20,6 +21,7 @@ configMapGenerator:
   - probe.py
   - probe_metrics.py
   - ocpp_probe.py
+  - service_gates.py
 - name: csms-dev-simulator
   files:
   - simulator.py

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csms-dev-service-gate-settings
+data:
+  # Enable only after the new connection metrics have >=5 minutes of baseline data.
+  GATE_ENABLED: 'false'
+  GATE_BASELINE_AT: '0'
+  GATE_THROUGHPUT_DROP_PERCENT: '50'
+  GATE_PROMETHEUS_URL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
