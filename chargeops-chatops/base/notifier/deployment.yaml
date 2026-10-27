@@ -26,6 +26,8 @@ spec:
             - secretRef:
                 name: chargeops-secrets
           env:
+            - name: ALERTMANAGER_URL
+              value: http://kps-kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
             - name: CSMS_URL
               value: http://csms:8000
             - name: AI_URL
