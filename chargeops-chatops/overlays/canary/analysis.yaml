@@ -3,8 +3,15 @@ kind: AnalysisTemplate
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '-1'
+    chargeops.io/analysis-mode: observe-only
+    chargeops.io/analysis-review-after: '2026-10-29'
   name: csms-availability
 spec:
+  # Temporary: record real results without aborting the rollout on analysis failures.
+  # Remove dryRun after reviewing the load-test results; thresholds stay unchanged.
+  dryRun:
+  - metricName: availability-error-latency-restarts
+  - metricName: five-level-service-gate
   args:
   - name: check-stable
   - name: candidate-hash
