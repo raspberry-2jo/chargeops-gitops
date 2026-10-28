@@ -6,6 +6,6 @@ metadata:
   name: csms-ops-service-gate-settings
 data:
   GATE_ENABLED: 'true'
-  GATE_BASELINE_AT: '1793150942'
+  GATE_BASELINE_AT: '1793154532'
   GATE_THROUGHPUT_DROP_PERCENT: '50'
   GATE_PROMETHEUS_URL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
