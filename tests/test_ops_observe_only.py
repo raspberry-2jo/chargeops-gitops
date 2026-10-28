@@ -16,7 +16,7 @@ def render(overlay):
 def test_ops_runs_both_real_checks_in_explicit_dry_run():
     template = next(d for d in render('canary') if d['kind'] == 'AnalysisTemplate')
     spec = template['spec']
-    expected = {'availability-error-latency-restarts', 'five-level-service-gate'}
+    expected = {'availability-error-latency-restarts', 'five-level-service-gate', 'websocket-session-quality'}
     assert {d['metricName'] for d in spec['dryRun']} == expected
     assert {m['name'] for m in spec['metrics']} == expected
     for metric in spec['metrics']:
@@ -25,7 +25,8 @@ def test_ops_runs_both_real_checks_in_explicit_dry_run():
         assert job['backoffLimit'] == 0
         container = job['template']['spec']['containers'][0]
         assert container['command'] in [
-            ['python', '/probe/probe.py'], ['python', '/probe/service_gates.py']]
+            ['python', '/probe/probe.py'], ['python', '/probe/service_gates.py'],
+            ['python', '/probe/websocket_quality.py']]
     assert template['metadata']['annotations']['chargeops.io/analysis-mode'] == 'observe-only'
 
 

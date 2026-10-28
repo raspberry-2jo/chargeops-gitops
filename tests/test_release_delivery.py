@@ -33,7 +33,7 @@ def test_ops_policy_uses_existing_traffic_without_active_fixture():
     docs=render('canary')
     template=next(d for d in docs if d['kind']=='AnalysisTemplate')
     assert {m['name'] for m in template['spec']['metrics']} == {
-        'availability-error-latency-restarts', 'five-level-service-gate'}
+        'availability-error-latency-restarts', 'five-level-service-gate', 'websocket-session-quality'}
     # No active connection Job / DB secret is needed for standard Ops promotion.
     assert all(m['provider']['job']['spec']['template']['spec']['containers'][0]['command']
                != ['python','-m','csms.release_probe'] for m in template['spec']['metrics'])

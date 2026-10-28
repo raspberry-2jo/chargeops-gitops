@@ -7,11 +7,11 @@ metadata:
     chargeops.io/analysis-review-after: '2026-10-29'
   name: csms-availability
 spec:
-  # Temporary: record real results without aborting the rollout on analysis failures.
-  # Remove dryRun after reviewing the load-test results; thresholds stay unchanged.
+  # Observation only; review thresholds before enabling blocking Analysis.
   dryRun:
   - metricName: availability-error-latency-restarts
   - metricName: five-level-service-gate
+  - metricName: websocket-session-quality
   args:
   - name: check-stable
   - name: candidate-hash
@@ -97,6 +97,60 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
+                envFrom:
+                - configMapRef:
+                    name: csms-ops-service-gate-settings
+                ports:
+                - name: probe-metrics
+                  containerPort: 9110
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 32Mi
+                  limits:
+                    cpu: 250m
+                    memory: 128Mi
+                volumeMounts:
+                - name: probe
+                  mountPath: /probe
+                  readOnly: true
+              volumes:
+              - name: probe
+                configMap:
+                  name: csms-canary-probe
+  - name: websocket-session-quality
+    count: 1
+    failureLimit: 0
+    provider:
+      job:
+        spec:
+          backoffLimit: 0
+          activeDeadlineSeconds: 120
+          ttlSecondsAfterFinished: 86400
+          template:
+            metadata:
+              labels:
+                chargeops.io/role: canary-probe
+            spec:
+              serviceAccountName: csms-ops-service-gate
+              restartPolicy: Never
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+              containers:
+              - name: probe
+                image: registry.chargeops.lab:5000/chargeops/python:3.13-slim@sha256:d879ed88565a7a3c614b980b369d4a5025a9d057b71f93d09fc6d0b2ca823a18
+                command:
+                - python
+                - /probe/websocket_quality.py
+                env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: WS_CHECK_STABLE
+                  value: '{{args.check-stable}}'
                 envFrom:
                 - configMapRef:
                     name: csms-ops-service-gate-settings
