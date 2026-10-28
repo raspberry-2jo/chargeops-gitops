@@ -17,4 +17,4 @@ generatorOptions:
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  digest: sha256:a5fdf74f5f35f969c1a18d4dbc24ce52a4c280448bfc65f96e605c463bf78601
+  digest: sha256:bf982c6da5cfdbe70cc500b563666028dffc794f6beb855a950db03a46b96948
