@@ -12,21 +12,24 @@ resources:
 images:
 - name: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
   newName: registry.chargeops.lab:5000/chargeops/chargeops-chatops-bot
-  digest: sha256:c1d4423fcf030ebe93375b193f20c7dc1ee857234d7dcfb63458bdc91ddd4f40
+  digest: sha256:103ded5c43a947ffaa6090fdd68e44708c7491bc36392eeca1d735c257d2df1d
 - name: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
   newName: registry.chargeops.lab:5000/chargeops/chargeops-ai-gateway
-  digest: sha256:01d47e2bea67268a0565a669028e220480bdaa97adb2ab9b10f9cf25fad16b72
+  digest: sha256:db75f7faf08f54b7e0592e732626c83fcfed98190966f482049c637484022d8f
 - name: registry.chargeops.lab:5000/chargeops/chargeops-csms
   newName: registry.chargeops.lab:5000/chargeops/chargeops-csms
-  digest: sha256:284a1ddb3f73fb944f4dd52c80e26c2c59879d62d9b57f6b9871cff7523d9000
+  digest: sha256:4b6ac3be1cac3dd5f62c04199ba5b9e9bdf5b7e14b5a8fc9dc859f182e36e963
 - name: registry.chargeops.lab:5000/chargeops/chargeops-notifier
   newName: registry.chargeops.lab:5000/chargeops/chargeops-notifier
-  digest: sha256:a7aedd1abb5c48ddfbfee3f6c2011148f6d9e4e2c197d51e7d163d802f2f4cfe
+  digest: sha256:38f5d9029152647f27a0bc16ec508b6127ea705677d2c5a497597f25ce6be335
 - name: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
   newName: registry.chargeops.lab:5000/chargeops/chargeops-vcharger
-  digest: sha256:eece4c459f46b343fc04fe16e7f652ad0982bf5149800b712f6259c803616b93
+  digest: sha256:7e022471817c40bdeed12d38d4da0d89caf77c14df134e95f90e42b2667f17d8
 - name: registry.chargeops.lab:5000/chargeops/collector
   newName: registry.chargeops.lab:5000/chargeops/chargeops-collector
   digest: sha256:53b2ee3c68d925b409c877dd839cd82e7de44aa44f63e5f2ea5ff4858b97fe07
+- name: registry.chargeops.lab:5000/chargeops/chargeops-collector
+  newName: registry.chargeops.lab:5000/chargeops/chargeops-collector
+  digest: sha256:d9e2a032c82e8a0db7c7aef3e683918066bf8671cd41a4bcf7ceb05edfbc7233
 patches:
 - path: csms-runtime.yaml
