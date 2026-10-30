@@ -1,0 +1,7 @@
+metric,normal_worst_observed,normal_run_count,drain_worst_observed,drain_run_count,suggested_limit,chosen_limit,abnormal_injection_detected,false_positive_count,notes
+worst_60s_connection_drop_pct,,,,,,,,,
+worst_60s_throughput_drop_pct,,,,,,,,,
+ocpp_heartbeat_error_pct,,,,,,,,,
+abnormal_session_termination_pct,,,,,,,,,
+heartbeat_success_pct,,,,,,,,,
+reconnect_p95_sec,,,,,,,,,

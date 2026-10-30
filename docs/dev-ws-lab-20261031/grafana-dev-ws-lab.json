@@ -1,0 +1,714 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "uid": "chargeops-dev-ws-lab",
+  "title": "ChargeOps DEV · 실제 WebSocket Canary 실험",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "tags": [
+    "chargeops",
+    "dev",
+    "ws-lab"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "검사 결과를 읽는 방법",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Dev / csms-ws-lab 전용** · CSMS4개, surge1, unavailable0, minReady30초. 기존 dev/csms와 Ops를 변경하지 않는 실험입니다. 검사값 1=통과, 0=보류, -1=실패. 15초 넘게 갱신되지 않은 결과는 빈 구간입니다. 재연결 p95는 자동 차단에 포함하지 않습니다."
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "배포 단계별 검사 판정 · 미수집은 빈 구간",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_state{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": -1,
+          "max": 1,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "실패",
+                  "color": "red"
+                },
+                "0": {
+                  "text": "보류",
+                  "color": "gray"
+                },
+                "1": {
+                  "text": "통과",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "연결 감소율 · 안정 1분 >2% 실패",
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"connections\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"connections\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "연결 수로 보정한 처리량 감소율 · >15% 실패",
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"normalized_throughput\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"normalized_throughput\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "신버전 OCPP 오류·Timeout · >1% 실패",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"canary_errors\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"canary_errors\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "신버전 비정상 연결 종료 · >1% 실패",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"canary_unexpected\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"canary_unexpected\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "신버전 Heartbeat 서버 처리 성공 · <99% 실패",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"canary_heartbeat_server\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"canary_heartbeat_server\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "사용 가능한 Pod · <4 실패",
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"available\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"available\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "기준 시각 이후 OOM · >0 실패",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"oom\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"oom\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "HTTP·DB 응답 · 0 실패",
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_value{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"health_db\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        },
+        {
+          "expr": "chargeops_ws_canary_signal_limit{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\",signal=\"health_db\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "B",
+          "legendFormat": "실패 경계",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "실패 경계"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "개별 판정 · 0은 표본·부하 조건·수집 확인 필요",
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "chargeops_ws_canary_signal_state{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} and on(candidate,stage) (time() - chargeops_ws_canary_observed_timestamp_seconds{namespace=\"dev\",candidate=~\"$candidate\",stage=~\"$stage\"} < 15)",
+          "refId": "A",
+          "legendFormat": "{{signal}} / {{candidate}} / {{stage}}%",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": -1,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "실제 활성 서비스 WebSocket · baseline800개와 비교",
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(chargeops_csms_active_sessions{namespace=\"dev\",pod=~\"csms-ws-lab-.*\",kind=\"service\",chargeops_policy_scrape=\"ws-v1\"})",
+          "legendFormat": "활성 서비스 세션",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "실제 OCPP 성공 처리량 · 초당",
+      "gridPos": {
+        "x": 12,
+        "y": 44,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(chargeops_ocpp_handler_results_total{namespace=\"dev\",pod=~\"csms-ws-lab-.*\",action=~\"Heartbeat|MeterValues|StatusNotification\",result=\"success\",chargeops_policy_scrape=\"ws-v1\"}[60s]))",
+          "legendFormat": "성공 / 초",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "candidate",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(chargeops_ws_canary_state{namespace=\"dev\"}, candidate)",
+        "refresh": 2,
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "name": "stage",
+        "type": "custom",
+        "query": "25,50,100",
+        "current": {
+          "text": "25",
+          "value": "25"
+        },
+        "multi": false
+      }
+    ]
+  }
+}

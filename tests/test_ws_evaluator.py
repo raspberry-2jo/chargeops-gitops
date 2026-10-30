@@ -109,3 +109,10 @@ def test_missing_oom_coverage_and_counter_reset_are_not_zero():
     c.prom=SimpleNamespace(vector=lambda *a:[copy.deepcopy(row)])
     pods=[{'metadata':{'name':'csms-oldhash-aaaaa'},'status':{'containerStatuses':[]}}]
     with pytest.raises(e.Missing):c.oom(pods,1010)
+
+
+def test_lab_oom_scrape_age_is_explicit_without_relaxing_ops_default():
+    assert m.Policy().oom_max_age==15
+    assert m.Policy({'WS_OOM_MAX_SAMPLE_AGE_SECONDS':'45'}).oom_max_age==45
+    for invalid in ('0','61','NaN'):
+        with pytest.raises(ValueError):m.Policy({'WS_OOM_MAX_SAMPLE_AGE_SECONDS':invalid})

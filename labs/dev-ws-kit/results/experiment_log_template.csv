@@ -1,0 +1,2 @@
+scenario,variant,repeat,started_kst,git_commit,image_digest,namespace,worker_nodes,pods_ready,connections,ramp_per_sec,heartbeat_sec,duration_sec,ocpp_success_pct,ocpp_p95_ms,ocpp_p99_ms,ocpp_success_rps,cpu_mean_millicores,cpu_peak_millicores,cpu_request_millicores,hpa_scaleout_seconds,active_connections_per_pod,reconnect_p95_ms,unexpected_disconnects,db_error_count,observability_complete,decision,notes
+A-baseline,control,1,,,,dev,2,4,100,5,20,600,,,,,,,,,,,,,,,

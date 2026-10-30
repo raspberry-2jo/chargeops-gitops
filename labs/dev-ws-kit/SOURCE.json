@@ -1,0 +1,5 @@
+{
+  "source": "ChargeOps_DEV_Lab_Kit.zip",
+  "sha256": "7ed7ed1e9628b9a4161dc38264c223b1f81ca910ffef5b5218e92657958d4ce7",
+  "use": "Existing client-side tools preserved; use the new Dev guide for deployment."
+}

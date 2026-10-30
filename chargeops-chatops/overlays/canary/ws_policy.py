@@ -25,6 +25,7 @@ class Policy:
         self.profile_confirmed=data.get('WS_LOAD_PROFILE_CONFIRMED','false')=='true'
         self.profile_id=data.get('WS_LOAD_PROFILE_ID','')
         if self.profile_confirmed and not self.profile_id:raise ValueError('A documented load profile ID is required')
+        self.oom_max_age=number('WS_OOM_MAX_SAMPLE_AGE_SECONDS',15,5,60)
         self.max_seconds=number('WS_MAX_OBSERVATION_SECONDS',600,180,900)
 
 

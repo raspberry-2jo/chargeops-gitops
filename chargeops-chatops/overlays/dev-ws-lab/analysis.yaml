@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: csms-ws-lab-availability
+  labels:
+    chargeops.test/workload: csms-ws-lab
+spec:
+  args:
+  - name: check-stable
+  - name: candidate-hash
+    value: ''
+  - name: stable-hash
+    value: ''
+  - name: stage
+    value: ''
+  - name: rollout-uid
+    value: ''
+  metrics:
+  - name: websocket-service-policy
+    count: 1
+    failureLimit: 0
+    successCondition: result == 1
+    failureCondition: result == -1
+    provider:
+      web:
+        url: http://csms-ws-lab-evaluator.dev.svc.cluster.local:9111/evaluate?candidate={{args.candidate-hash}}&stable={{args.stable-hash}}&stage={{args.stage}}&uid={{args.rollout-uid}}
+        timeoutSeconds: 660
+        jsonPath: '{$.state}'

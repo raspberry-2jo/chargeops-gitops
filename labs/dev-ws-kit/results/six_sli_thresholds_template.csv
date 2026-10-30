@@ -1,0 +1,3 @@
+scenario,repeat,reference_summary,observed_summary,git_commit,csms_image_digest,real_dev_test,minimum_sample_met,worst_60s_connection_drop_pct,worst_60s_throughput_drop_pct,ocpp_heartbeat_error_pct,abnormal_session_termination_pct,heartbeat_success_pct,reconnect_p95_sec,recovery_coverage_pct,observed_pods,pod_restarts,pod_cpu_peak_millicores,db_error_count,decision,reason
+H-steady,1,,,,,NO,,,,,,,,,,,,,,보류,측정 전
+H-drain,1,,,,,NO,,,,,,,,,,,,,,보류,측정 전

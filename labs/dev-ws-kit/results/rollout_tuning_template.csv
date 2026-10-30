@@ -1,0 +1,7 @@
+experiment,parameter,candidate,repeat,image_digest,connections,heartbeat_interval_s,rollout_seconds,max_pods,pending_peak,minimum_available,observed_no_progress_gap_s,ocpp_success_pct,ocpp_p95_ms,ws_unexpected_disconnect_pct,reconnect_p95_s,job_duration_s,analysis_status,final_judgement,notes
+G1,maxSurge,1,1,,,,,,,,,,,,,,,보류,
+G2,maxUnavailable,0,1,,,,,,,,,,,,,,,보류,
+G3,minReadySeconds,30,1,,,,,,,,,,,,,,,보류,
+G4,progressDeadlineSeconds,600,1,,,,,,,,,,,,,,,보류,
+G5,count/failureLimit,1/0,1,,,,,,,,,,,,,,,보류,
+G6,activeDeadlineSeconds/backoffLimit,240/0,1,,,,,,,,,,,,,,,보류,

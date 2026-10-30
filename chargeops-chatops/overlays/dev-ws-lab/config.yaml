@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csms-ws-lab-config
+  namespace: dev
+  labels:
+    chargeops.test/workload: csms-ws-lab
+data:
+  ENVIRONMENT: dev
+  REQUIRE_CN: 'false'
+  HEARTBEAT_INTERVAL: '30'
+  OCPP_PORT: '9000'
+  METRICS_PORT: '9100'
+  DB_POOL: '2'
+  PEERS_DNS: ''
+  DRAIN_SECONDS: '20'
+  DEV_SIMULATION_ENABLED: 'true'
+  DEV_SIMULATION_IDS: CI-DEV-SIM-01
+  DEV_WS_LAB: 'true'
+  LAB_WORKLOAD: csms-ws-lab
+  DEV_LAB_SIMULATION_COUNT: '800'

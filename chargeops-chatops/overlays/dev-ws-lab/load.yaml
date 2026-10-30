@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csms-ws-lab-load
+  namespace: dev
+  labels:
+    chargeops.test/workload: csms-ws-lab
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: csms-ws-lab-load
+  template:
+    metadata:
+      labels:
+        app: csms-ws-lab-load
+        chargeops.test/workload: csms-ws-lab
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: stable
+        image: registry.chargeops.lab:5000/chargeops/chargeops-csms:BUILD-WS-LAB-IMAGE-FIRST
+        command:
+        - python
+        - /load/load.py
+        env:
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: PYTHONDONTWRITEBYTECODE
+          value: '1'
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LAB_WORKLOAD
+          value: csms-ws-lab
+        - name: COHORT
+          value: stable
+        - name: COHORT_OFFSET
+          value: '0'
+        - name: COHORT_SIZE
+          value: '400'
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: load
+          mountPath: /load
+          readOnly: true
+        - name: control-stable
+          mountPath: /control
+      - name: canary
+        image: registry.chargeops.lab:5000/chargeops/chargeops-csms:BUILD-WS-LAB-IMAGE-FIRST
+        command:
+        - python
+        - /load/load.py
+        env:
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: PYTHONDONTWRITEBYTECODE
+          value: '1'
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LAB_WORKLOAD
+          value: csms-ws-lab
+        - name: COHORT
+          value: canary
+        - name: COHORT_OFFSET
+          value: '400'
+        - name: COHORT_SIZE
+          value: '400'
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: load
+          mountPath: /load
+          readOnly: true
+        - name: control-canary
+          mountPath: /control
+      volumes:
+      - name: load
+        configMap:
+          name: csms-ws-lab-load
+      - name: control-stable
+        emptyDir: {}
+      - name: control-canary
+        emptyDir: {}

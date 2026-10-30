@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Seoul",
+  "app_pytest": 370,
+  "gitops_pytest": 223,
+  "attached_kit_pytest": 5,
+  "total_distinct_tests": 598,
+  "promql_parsed": 16,
+  "promql_cases": 8,
+  "test_python": "3.13",
+  "ci_validate": "6 Docker contexts/COPY inputs/Python syntax passed",
+  "real_socket_client_test": "Passed against local synthetic OCPP responder, NOT real CSMS",
+  "kubectl_kustomize": "Standalone dev-ws-lab and canary rendered",
+  "dev_applied": false,
+  "docker_image_built": false,
+  "cluster_preflight_run": false,
+  "ops_changed_live": false,
+  "github_pushed": false,
+  "main_merged": false
+}

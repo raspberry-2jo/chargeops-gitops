@@ -193,7 +193,7 @@ class Collector:
         for row in current:
             key=self.oom_key(row);name=row['metric'].get('pod');value=float(row['value'][1])
             if name not in owned:continue
-            if freshness.get(key,math.inf)>15:unknown=True;continue
+            if freshness.get(key,math.inf)>getattr(getattr(self,'policy',None),'oom_max_age',15):unknown=True;continue
             covered.add(name)
             if key in self.base_oom:
                 if value<self.base_oom[key]:unknown=True

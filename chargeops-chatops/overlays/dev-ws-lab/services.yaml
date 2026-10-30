@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: csms-ws-lab
+  namespace: dev
+  labels:
+    chargeops.test/workload: csms-ws-lab
+spec:
+  selector:
+    app: csms-ws-lab
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+  - name: ocpp
+    port: 9000
+    targetPort: ocpp
+  - name: metrics
+    port: 9100
+    targetPort: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: csms-ws-lab-stable
+  namespace: dev
+  labels:
+    chargeops.test/workload: csms-ws-lab
+spec:
+  selector:
+    app: csms-ws-lab
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+  - name: ocpp
+    port: 9000
+    targetPort: ocpp
+  - name: metrics
+    port: 9100
+    targetPort: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: csms-ws-lab-canary
+  namespace: dev
+  labels:
+    chargeops.test/workload: csms-ws-lab
+spec:
+  selector:
+    app: csms-ws-lab
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+  - name: ocpp
+    port: 9000
+    targetPort: ocpp
+  - name: metrics
+    port: 9100
+    targetPort: metrics

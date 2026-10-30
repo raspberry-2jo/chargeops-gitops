@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: csms-ws-lab-settings
+  labels:
+    chargeops.test/workload: csms-ws-lab
+data:
+  GATE_ENABLED: 'true'
+  GATE_BASELINE_AT: '0'
+  GATE_THROUGHPUT_DROP_PERCENT: '50'
+  GATE_PROMETHEUS_URL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+  WS_CONNECTION_DROP_PERCENT: '2'
+  WS_THROUGHPUT_DROP_PERCENT: '15'
+  WS_ERROR_PERCENT: '1'
+  WS_UNEXPECTED_CLOSE_PERCENT: '1'
+  WS_HEARTBEAT_SUCCESS_PERCENT: '99'
+  WS_MIN_OCPP_SAMPLES: '600'
+  WS_MIN_HEARTBEAT_SAMPLES: '300'
+  WS_MIN_SESSION_OPPORTUNITIES: '300'
+  WS_INPUT_PROFILE_TOLERANCE_PERCENT: '10'
+  WS_MAX_OBSERVATION_SECONDS: '600'
+  WS_LOAD_PROFILE_CONFIRMED: 'false'
+  WS_LOAD_PROFILE_ID: ''
+  WS_OOM_MAX_SAMPLE_AGE_SECONDS: '45'
