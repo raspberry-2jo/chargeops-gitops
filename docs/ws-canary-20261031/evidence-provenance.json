@@ -1,0 +1,23 @@
+{
+  "zip_sha256": "a561491e5d406aa4f99097116ac54ccf580c537322a7cf0d8347ca326de76c3a",
+  "source_files": [
+    {
+      "name": "ChargeOps_4차_①실험중_대시보드.json",
+      "sha256": "5c4842b88ea21d7250ee6c2ded6595c2e097124277d43537e47a9cba2339d489"
+    },
+    {
+      "name": "ChargeOps_4차_②끝난뒤조회_대시보드.json",
+      "sha256": "5b6405f3d3d0f2f6eac205bbb41179fa9d78ff9981176680e4fe428336237d27"
+    },
+    {
+      "name": "ChargeOps_5차_HPA시험_촬영용_대시보드.json",
+      "sha256": "1a988a6becd493a16eca49f58f1c6e19d18dfd56a490342e34c1475578e093df"
+    },
+    {
+      "name": "ChargeOps_부하테스트_4·5차_결과와_조회안내_1030.md",
+      "sha256": "e9321856c0031402bf35786cc355fdd424de9c133dde07fb7d224a4f5ba99e63"
+    }
+  ],
+  "raw_prometheus_data_retrieved": false,
+  "live_dev_test_executed": false
+}

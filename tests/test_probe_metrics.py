@@ -135,6 +135,6 @@ def test_rendered_monitoring_scope_and_unchanged_workloads():
     assert policy['spec']['ingress'][0]['ports'] == [{'port': 9110, 'protocol': 'TCP'}]
     assert policy['spec']['ingress'][0]['from'] == [{'namespaceSelector': {
         'matchLabels': {'kubernetes.io/metadata.name': 'monitoring'}}}]
-    job = by_key['AnalysisTemplate', 'csms-availability']['spec']['metrics'][0]['provider']['job']['spec']
+    job = next(m for m in by_key['AnalysisTemplate', 'csms-availability']['spec']['metrics'] if m['name'] == 'availability-error-latency-restarts')['provider']['job']['spec']
     assert job['activeDeadlineSeconds'] == 240
     assert job['template']['spec']['containers'][0]['ports'] == [{'name': 'probe-metrics', 'containerPort': 9110}]

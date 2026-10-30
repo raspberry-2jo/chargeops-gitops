@@ -9,3 +9,17 @@ data:
   GATE_BASELINE_AT: '1793266903'
   GATE_THROUGHPUT_DROP_PERCENT: '50'
   GATE_PROMETHEUS_URL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+  WS_CONNECTION_DROP_PERCENT: '2'
+  WS_THROUGHPUT_DROP_PERCENT: '15'
+  WS_ERROR_PERCENT: '1'
+  WS_UNEXPECTED_CLOSE_PERCENT: '1'
+  WS_HEARTBEAT_SUCCESS_PERCENT: '99'
+  WS_MIN_OCPP_SAMPLES: '600'
+  WS_MIN_HEARTBEAT_SAMPLES: '300'
+  WS_MIN_SESSION_OPPORTUNITIES: '300'
+  WS_INPUT_PROFILE_TOLERANCE_PERCENT: '10'
+  WS_MAX_OBSERVATION_SECONDS: '600'
+  # Human attestation of the current run's offered workload, not inferred from replica weights.
+  # Do not enable just to bypass low traffic. Supply a reproducible profile and evidence first.
+  WS_LOAD_PROFILE_CONFIRMED: 'false'
+  WS_LOAD_PROFILE_ID: ''

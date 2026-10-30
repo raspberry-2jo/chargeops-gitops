@@ -18,15 +18,19 @@ def test_ops_runs_both_real_checks_in_explicit_dry_run():
     spec = template['spec']
     expected = {'availability-error-latency-restarts', 'five-level-service-gate'}
     assert {d['metricName'] for d in spec['dryRun']} == expected
-    assert {m['name'] for m in spec['metrics']} == expected
-    for metric in spec['metrics']:
+    assert {m['name'] for m in spec['metrics']} == expected | {'websocket-service-policy'}
+    web = next(m for m in spec['metrics'] if m['name'] == 'websocket-service-policy')
+    assert web['successCondition'] == 'result == 1'
+    assert web['failureCondition'] == 'result == -1'
+    assert web['provider']['web']['jsonPath'] == '{$.state}'
+    for metric in (m for m in spec['metrics'] if 'job' in m['provider']):
         assert metric['failureLimit'] == 0  # Preserve truthful inspection results.
         job = metric['provider']['job']['spec']
         assert job['backoffLimit'] == 0
         container = job['template']['spec']['containers'][0]
         assert container['command'] in [
             ['python', '/probe/probe.py'], ['python', '/probe/service_gates.py']]
-    assert template['metadata']['annotations']['chargeops.io/analysis-mode'] == 'observe-only'
+    assert template['metadata']['annotations']['chargeops.io/analysis-mode'] == 'websocket-blocking-v1'
 
 
 def test_observation_does_not_relax_readiness_or_step_structure():

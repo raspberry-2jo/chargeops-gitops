@@ -10,12 +10,15 @@ resources:
 - probe-monitoring.yaml
 - gate-rbac.yaml
 - ocpp-settings.yaml
+- evaluator.yaml
 configMapGenerator:
 - name: csms-canary-probe
   files:
   - probe.py
   - probe_metrics.py
   - service_gates.py
+  - ws_policy.py
+  - ws_evaluator.py
 generatorOptions:
   annotations:
     argocd.argoproj.io/sync-wave: '-1'

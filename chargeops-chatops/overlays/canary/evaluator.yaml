@@ -1,0 +1,255 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csms-canary-evaluator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: csms-canary-evaluator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+rules:
+- apiGroups: ['']
+  resources: [pods, services]
+  verbs: [get, list]
+- apiGroups: ['']
+  resources: [configmaps]
+  resourceNames: [csms-ops-service-gate-settings]
+  verbs: [get]
+- apiGroups: [apps]
+  resources: [replicasets]
+  verbs: [get, list]
+- apiGroups: [argoproj.io]
+  resources: [rollouts]
+  resourceNames: [csms]
+  verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: csms-canary-evaluator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+subjects:
+- kind: ServiceAccount
+  name: csms-canary-evaluator
+  namespace: ops
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: csms-canary-evaluator
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csms-canary-evaluator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: csms-canary-evaluator
+  template:
+    metadata:
+      labels:
+        app: csms-canary-evaluator
+        chargeops.io/role: canary-evaluator
+    spec:
+      serviceAccountName: csms-canary-evaluator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+      - name: evaluator
+        image: registry.chargeops.lab:5000/chargeops/python:3.13-slim@sha256:d879ed88565a7a3c614b980b369d4a5025a9d057b71f93d09fc6d0b2ca823a18
+        command: [python, /gate/ws_evaluator.py]
+        env:
+        - name: PYTHONDONTWRITEBYTECODE
+          value: '1'
+        - name: PYTHONUNBUFFERED
+          value: '1'
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        ports:
+        - name: evaluation
+          containerPort: 9111
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: evaluation
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: evaluation
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+        - name: policy
+          mountPath: /gate
+          readOnly: true
+      volumes:
+      - name: policy
+        configMap:
+          name: csms-canary-probe
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: csms-canary-evaluator
+  labels:
+    chargeops.io/metrics: csms-canary-evaluator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+spec:
+  selector:
+    app: csms-canary-evaluator
+  ports:
+  - name: evaluation
+    port: 9111
+    targetPort: evaluation
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: csms-canary-evaluator
+spec:
+  namespaceSelector:
+    matchNames: [ops]
+  selector:
+    matchLabels:
+      chargeops.io/metrics: csms-canary-evaluator
+  endpoints:
+  - port: evaluation
+    path: /metrics
+    interval: 5s
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: csms-canary-evaluator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+spec:
+  podSelector:
+    matchLabels:
+      app: csms-canary-evaluator
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [argocd, argo-rollouts]
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: argo-rollouts
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9111
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: csms
+    ports:
+    - protocol: TCP
+      port: 8000
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: csms-canary-evaluator-targets
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+spec:
+  podSelector:
+    matchLabels:
+      app: csms
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: csms-canary-evaluator
+    ports:
+    - protocol: TCP
+      port: 8000
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9100
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: csms-websocket-policy
+  labels:
+    release: kps
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+spec:
+  namespaceSelector:
+    matchNames: [ops]
+  selector:
+    matchLabels:
+      app: csms
+  podMetricsEndpoints:
+  - port: metrics
+    path: /metrics
+    interval: 5s
+    scrapeTimeout: 3s
+    metricRelabelings:
+    - action: replace
+      targetLabel: chargeops_policy_scrape
+      replacement: ws-v1

@@ -353,7 +353,9 @@ def baseline_analysis():
                 'spec': {'args': [{'name': 'check-stable', 'value': 'true'}],
                          'metrics': []}}
     template = get('-n', 'ops', 'get', 'analysistemplate', 'csms-availability')
-    document['spec']['metrics'] = template['spec']['metrics']
+    # Bootstrap checks the existing baseline before handover, not a nonexistent candidate revision.
+    document['spec']['metrics'] = [m for m in template['spec']['metrics'] if m['name']=='availability-error-latency-restarts']
+    if not document['spec']['metrics']:raise ValueError('Baseline HTTP availability metric missing')
     analysis = json.loads(run('kubectl', 'create', '-f', '-', '-o', 'json', payload=json.dumps(document)))
     name = analysis['metadata']['name']
     deadline = time.monotonic() + 300

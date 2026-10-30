@@ -87,7 +87,7 @@ def apply():
 def check():
     preflight()
     template = get('analysistemplate', 'csms-availability')
-    metric = template['spec']['metrics'][0]
+    metric = next(m for m in template['spec']['metrics'] if m['name']=='availability-error-latency-restarts')
     container = metric['provider']['job']['spec']['template']['spec']['containers'][0]
     if {'name': 'PROBE_METRICS', 'value': 'true'} not in container.get('env', []):
         raise RuntimeError('Apply Ops probe telemetry before running check')

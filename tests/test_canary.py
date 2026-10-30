@@ -37,7 +37,12 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
                          ('ServiceMonitor', 'csms-canary-probe'), ('NetworkPolicy', 'csms-canary-probe-metrics'),
                          ('ServiceAccount','csms-ops-service-gate'),('Role','csms-ops-service-gate'),
                          ('RoleBinding','csms-ops-service-gate'),('NetworkPolicy','csms-ops-service-gate-egress'),
-                         ('ConfigMap','csms-ops-ocpp-settings')}
+                         ('ConfigMap','csms-ops-ocpp-settings'),
+                         ('Deployment','csms-canary-evaluator'), ('Service','csms-canary-evaluator'),
+                         ('ServiceAccount','csms-canary-evaluator'), ('Role','csms-canary-evaluator'),
+                         ('RoleBinding','csms-canary-evaluator'), ('NetworkPolicy','csms-canary-evaluator'),
+                         ('NetworkPolicy','csms-canary-evaluator-targets'),
+                         ('ServiceMonitor','csms-canary-evaluator'), ('PodMonitor','csms-websocket-policy')}
     rollout = actual['Rollout', 'csms']['spec']
     assert rollout['replicas'] == 4
     assert rollout['workloadRef']['scaleDown'] == 'never'
@@ -46,7 +51,7 @@ def test_canary_overlay_adds_only_rollout_analysis_probe_and_services():
     assert strategy['maxUnavailable'] == 0 and strategy['maxSurge'] == 1
     assert [s['setWeight'] for s in strategy['steps'] if 'setWeight' in s] == [25, 50, 100]
     assert sum('analysis' in s for s in strategy['steps']) == 3
-    metric = actual['AnalysisTemplate', 'csms-availability']['spec']['metrics'][0]
+    metric = next(m for m in actual['AnalysisTemplate', 'csms-availability']['spec']['metrics'] if m['name'] == 'availability-error-latency-restarts')
     assert metric['failureLimit'] == 0
     job = metric['provider']['job']['spec']
     assert job['backoffLimit'] == 0 and job['activeDeadlineSeconds'] == 240

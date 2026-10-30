@@ -37,6 +37,15 @@ spec:
           - name: candidate-hash
             valueFrom:
               podTemplateHashValue: Latest
+          - name: stable-hash
+            valueFrom:
+              podTemplateHashValue: Stable
+          - name: stage
+            value: '25'
+          - name: rollout-uid
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
       - setWeight: 50
       - analysis:
           templates:
@@ -47,6 +56,15 @@ spec:
           - name: candidate-hash
             valueFrom:
               podTemplateHashValue: Latest
+          - name: stable-hash
+            valueFrom:
+              podTemplateHashValue: Stable
+          - name: stage
+            value: '50'
+          - name: rollout-uid
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
       - setWeight: 100
       - analysis:
           templates:
@@ -57,3 +75,12 @@ spec:
           - name: candidate-hash
             valueFrom:
               podTemplateHashValue: Latest
+          - name: stable-hash
+            valueFrom:
+              podTemplateHashValue: Stable
+          - name: stage
+            value: '100'
+          - name: rollout-uid
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid

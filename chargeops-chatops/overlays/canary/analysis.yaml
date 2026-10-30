@@ -3,12 +3,10 @@ kind: AnalysisTemplate
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '-1'
-    chargeops.io/analysis-mode: observe-only
-    chargeops.io/analysis-review-after: '2026-10-29'
+    chargeops.io/analysis-mode: websocket-blocking-v1
   name: csms-availability
 spec:
-  # Temporary: record real results without aborting the rollout on analysis failures.
-  # Remove dryRun after reviewing the load-test results; thresholds stay unchanged.
+  # Legacy binary Jobs remain diagnostic only. The Web policy is the blocking authority.
   dryRun:
   - metricName: availability-error-latency-restarts
   - metricName: five-level-service-gate
@@ -16,7 +14,23 @@ spec:
   - name: check-stable
   - name: candidate-hash
     value: ''
+  - name: stable-hash
+    value: ''
+  - name: stage
+    value: ''
+  - name: rollout-uid
+    value: ''
   metrics:
+  - name: websocket-service-policy
+    count: 1
+    failureLimit: 0
+    successCondition: result == 1
+    failureCondition: result == -1
+    provider:
+      web:
+        url: http://csms-canary-evaluator.ops.svc.cluster.local:9111/evaluate?candidate={{args.candidate-hash}}&stable={{args.stable-hash}}&stage={{args.stage}}&uid={{args.rollout-uid}}
+        timeoutSeconds: 660
+        jsonPath: '{$.state}'
   - name: availability-error-latency-restarts
     count: 1
     failureLimit: 0
