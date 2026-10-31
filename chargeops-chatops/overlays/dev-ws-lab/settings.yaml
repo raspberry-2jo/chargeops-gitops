@@ -14,6 +14,13 @@ data:
   WS_ERROR_PERCENT: '1'
   WS_UNEXPECTED_CLOSE_PERCENT: '1'
   WS_HEARTBEAT_SUCCESS_PERCENT: '99'
+  # Experiments 1/2: retain 99/15 candidate limits; do not loosen to hide noise.
+  # Heartbeat remains observe-only until its calculation is fixed and validated.
+  # Query lag 30s / throughput window 120s are deferred until experiments 3/4.
+  # Server Heartbeat false positive; throughput normal drop reached 22.9%.
+  # Keep candidate limits visible, but do not use these two signals to block Dev.
+  WS_HEARTBEAT_MODE: observe-only
+  WS_THROUGHPUT_MODE: observe-only
   WS_MIN_OCPP_SAMPLES: '600'
   WS_MIN_HEARTBEAT_SAMPLES: '300'
   WS_MIN_SESSION_OPPORTUNITIES: '300'

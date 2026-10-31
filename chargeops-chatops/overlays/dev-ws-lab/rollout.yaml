@@ -7,6 +7,7 @@ metadata:
 spec:
   replicas: 4
   revisionHistoryLimit: 3
+  # Experiment 2 R2: retain the stabilization period; zero saved only about 4%.
   minReadySeconds: 30
   progressDeadlineSeconds: 600
   progressDeadlineAbort: true
@@ -17,6 +18,8 @@ spec:
       app: csms-ws-lab
   strategy:
     canary:
+      # Experiment 2: surge 2 exceeds the measured lab quota; unavailable 1
+      # conflicts with the enforced minimum of four available replicas.
       maxSurge: 1
       maxUnavailable: 0
       stableService: csms-ws-lab-stable
@@ -162,6 +165,8 @@ spec:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
+        # Exclude the untolerated control-plane node from spread calculations.
+        nodeTaintsPolicy: Honor
         labelSelector: &id001
           matchLabels:
             app: csms-ws-lab

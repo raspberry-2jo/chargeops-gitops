@@ -30,6 +30,8 @@ def test_lab_overlay_has_real_csms_and_only_fixed_dev_resources():
     peak=m.peak(docs);assert peak['pods']==7 and peak['limits.cpu']==pytest.approx(1.65)
     assert peak['limits.memory']==1792*1024**2
     assert by['ConfigMap',m.LAB+'-settings']['data']['WS_OOM_MAX_SAMPLE_AGE_SECONDS']=='45'
+    settings=by['ConfigMap',m.LAB+'-settings']['data']
+    assert settings['WS_HEARTBEAT_MODE']==settings['WS_THROUGHPUT_MODE']=='observe-only'
     for module in ('ws_policy.py','ws_evaluator.py'):
         assert (ROOT/'chargeops-chatops/overlays/dev-ws-lab'/module).read_bytes()==(ROOT/'chargeops-chatops/overlays/canary'/module).read_bytes()
 

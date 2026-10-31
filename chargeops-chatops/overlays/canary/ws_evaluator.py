@@ -273,7 +273,7 @@ def render_metrics():
         lines.append(f'chargeops_ws_canary_state{{{labels}}} {result["state"]}')
         lines.append(f'chargeops_ws_canary_observed_timestamp_seconds{{{labels}}} {result.get("observed_at",0)}')
         for name,signal in result.get('signals',{}).items():
-            tag=labels+f',signal="{name}"'
+            tag=labels+f',signal="{name}",mode="{signal.get("mode","enforce")}"'
             lines.append(f'chargeops_ws_canary_signal_state{{{tag}}} {signal["state"]}')
             for suffix,key in (('value','value'),('limit','limit')):
                 if signal.get(key) is not None:lines.append(f'chargeops_ws_canary_signal_{suffix}{{{tag}}} {signal[key]}')

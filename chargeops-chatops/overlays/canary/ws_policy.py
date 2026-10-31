@@ -18,6 +18,13 @@ class Policy:
         self.error=number('WS_ERROR_PERCENT',1,0,100)
         self.unexpected=number('WS_UNEXPECTED_CLOSE_PERCENT',1,0,100)
         self.heartbeat=number('WS_HEARTBEAT_SUCCESS_PERCENT',99,0,100)
+        # Explicit opt-in per environment; existing Ops gates remain enforced.
+        def mode(key):
+            value=data.get(key,'enforce')
+            if value not in ('enforce','observe-only'):raise ValueError('Invalid policy '+key)
+            return value
+        self.heartbeat_mode=mode('WS_HEARTBEAT_MODE')
+        self.throughput_mode=mode('WS_THROUGHPUT_MODE')
         self.samples=number('WS_MIN_OCPP_SAMPLES',600,1,10000000)
         self.hb_samples=number('WS_MIN_HEARTBEAT_SAMPLES',300,1,10000000)
         self.sessions=number('WS_MIN_SESSION_OPPORTUNITIES',300,1,10000000)
@@ -116,7 +123,12 @@ class Assessment:
             for name,result in results.items():
                 if name not in ('available','oom','health_db','candidate_restart','coverage'):
                     result.update(state=0,reason='DATA_NOT_FRESH')
-        states=[r['state'] for r in results.values()]
+        for name,result in results.items():
+            result['mode']=(p.heartbeat_mode if name.endswith('_heartbeat_server') else
+                            p.throughput_mode if name=='normalized_throughput' else 'enforce')
+        # Preserve measured value/state/reason for diagnostics. Observations are
+        # excluded from the release decision, never rewritten into a PASS.
+        states=[r['state'] for r in results.values() if r['mode']=='enforce']
         if -1 in states:state=-1
         elif 0 in states:state=0
         else:

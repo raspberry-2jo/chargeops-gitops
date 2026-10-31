@@ -80,3 +80,53 @@ def test_drain_resets_steady_and_success_history():
     assert a.evaluate(s,80)['state']==0
     assert a.evaluate(s,140)['state']==0
     assert a.evaluate(s,200)['state']==1
+
+
+def experiment_one():
+    return m.Assessment(m.Policy({'WS_HEARTBEAT_MODE':'observe-only',
+                                  'WS_THROUGHPUT_MODE':'observe-only'}))
+
+
+def test_experiment_one_normal_worst_case_does_not_false_abort():
+    s=good();s['connections']=998.85
+    s['roles']['canary'].update(hb_success=2898,success=4626)
+    a=experiment_one();a.evaluate(s,0);a.evaluate(s,60);r=a.evaluate(s,120)
+    assert r['state']==1
+    for name,value in [('canary_heartbeat_server',96.6),('normalized_throughput',22.9)]:
+        assert r['signals'][name]['value']==pytest.approx(value)
+        assert r['signals'][name]['mode']=='observe-only'
+    assert r['signals']['canary_heartbeat_server']['state']==-1  # Not falsely reported as passed.
+
+
+def test_experiment_one_transition_spike_excluded_then_fault_detected():
+    a=experiment_one();s=good();s['connections']=924;s['infra']['draining']=True
+    assert a.evaluate(s,0)['signals']['connections']['reason']=='DRAIN_OR_SETTLING'
+    s['infra']['draining']=False
+    assert a.evaluate(s,10)['state']==0
+    s['connections']=956.25
+    r=a.evaluate(s,70)
+    assert r['state']==-1 and r['signals']['connections']['value']==pytest.approx(4.375)
+
+
+def test_experiment_one_missing_observations_are_not_fake_success():
+    a=experiment_one();s=good()
+    s['roles']['canary'].update(hb_total=None,hb_success=None,success=None)
+    a.evaluate(s,0);a.evaluate(s,60);r=a.evaluate(s,120)
+    assert r['state']==1
+    assert r['signals']['canary_heartbeat_server']['state']==0
+    assert r['signals']['normalized_throughput']['state']==0
+    s['roles']['canary']['total']=599
+    assert a.evaluate(s,130)['state']==0  # Enforced sample floor still blocks.
+    s['infra']['available']=3
+    assert a.evaluate(s,140)['state']==-1
+
+
+@pytest.mark.parametrize('field,value',[('errors',61),('abnormal',11)])
+def test_experiment_one_unvalidated_candidate_limits_still_enforced(field,value):
+    a=experiment_one();s=good();s['roles']['canary'][field]=value
+    assert a.evaluate(s,0)['state']==-1
+
+
+@pytest.mark.parametrize('key',['WS_HEARTBEAT_MODE','WS_THROUGHPUT_MODE'])
+def test_invalid_mode_cannot_silently_disable_a_gate(key):
+    with pytest.raises(ValueError):m.Policy({key:'disabled'})

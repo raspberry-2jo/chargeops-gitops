@@ -17,6 +17,8 @@ spec:
     value: ''
   metrics:
   - name: websocket-service-policy
+    # Experiment 2 R4: one Web evaluation already observes for up to 540s.
+    # Fix false-positive measurement causes instead of multiplying evaluations.
     count: 1
     failureLimit: 0
     successCondition: result == 1
