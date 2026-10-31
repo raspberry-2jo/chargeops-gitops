@@ -7,6 +7,7 @@ metadata:
 spec:
   replicas: 4
   revisionHistoryLimit: 3
+  # Same readiness stabilization period as the Dev RollingUpdate Deployment.
   minReadySeconds: 30
   progressDeadlineSeconds: 600
   progressDeadlineAbort: true
@@ -22,6 +23,7 @@ spec:
     scaleDown: never
   strategy:
     canary:
+      # Retain surge headroom and the four-available-replica safety contract.
       maxSurge: 1
       maxUnavailable: 0
       stableService: csms-stable

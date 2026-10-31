@@ -15,6 +15,7 @@ def test_dev_rolling_preserves_simulators_metrics_and_has_no_rollout():
     assert not any(d['kind'] in ('Rollout','AnalysisTemplate') for d in docs)
     deployment=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='csms')
     assert deployment['spec']['replicas']==2
+    assert deployment['spec']['minReadySeconds']==30
     assert deployment['spec']['strategy']=={'type':'RollingUpdate','rollingUpdate':{'maxSurge':1,'maxUnavailable':0}}
     assert deployment['spec']['template']['metadata']['annotations']['chargeops.io/deployment-mode']=='rolling'
     config=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']=='chargeops-dev-config')['data']
@@ -38,6 +39,18 @@ def test_ops_policy_uses_existing_traffic_without_active_fixture():
     assert all(m['provider']['job']['spec']['template']['spec']['containers'][0]['command']
                != ['python','-m','csms.release_probe'] for m in template['spec']['metrics'] if 'job' in m['provider'])
     rollout=next(d for d in docs if d['kind']=='Rollout')
+    assert rollout['metadata']['namespace']=='ops'
+    assert rollout['spec']['replicas']==4 and rollout['spec']['minReadySeconds']==30
+    assert rollout['spec']['strategy']['canary']['maxSurge']==1
+    assert rollout['spec']['strategy']['canary']['maxUnavailable']==0
+    blocking=next(m for m in template['spec']['metrics'] if m['name']=='websocket-service-policy')
+    assert blocking['count']==1 and blocking['failureLimit']==0
+    settings=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']=='csms-ops-service-gate-settings')['data']
+    assert settings['WS_HEARTBEAT_MODE']==settings['WS_THROUGHPUT_MODE']=='observe-only'
+    for key,value in {'WS_CONNECTION_DROP_PERCENT':'2','WS_THROUGHPUT_DROP_PERCENT':'15',
+                      'WS_ERROR_PERCENT':'1','WS_UNEXPECTED_CLOSE_PERCENT':'1',
+                      'WS_HEARTBEAT_SUCCESS_PERCENT':'99','WS_INPUT_PROFILE_TOLERANCE_PERCENT':'10'}.items():
+        assert settings[key]==value
     for step in rollout['spec']['strategy']['canary']['steps']:
         if 'analysis' in step:
             assert {'name':'candidate-hash','valueFrom':{'podTemplateHashValue':'Latest'}} in step['analysis']['args']

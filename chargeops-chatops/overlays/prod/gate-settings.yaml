@@ -14,6 +14,10 @@ data:
   WS_ERROR_PERCENT: '1'
   WS_UNEXPECTED_CLOSE_PERCENT: '1'
   WS_HEARTBEAT_SUCCESS_PERCENT: '99'
+  # Experiment findings: preserve candidate limits without false aborts.
+  # Re-enable Heartbeat only after its calculation is fixed and validated.
+  WS_HEARTBEAT_MODE: observe-only
+  WS_THROUGHPUT_MODE: observe-only
   WS_MIN_OCPP_SAMPLES: '600'
   WS_MIN_HEARTBEAT_SAMPLES: '300'
   WS_MIN_SESSION_OPPORTUNITIES: '300'
